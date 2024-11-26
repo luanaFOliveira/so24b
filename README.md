@@ -42,29 +42,29 @@ Ver [aqui](https://www.ufsm.br/ementario/disciplinas/ELC1080/).
 |    3 | 17set  | origens de SO -- programa monitor, processamento em lote, multiprogramação
 |    4 | 19set  | processos -- modo supervisor, estado do processador, interrupção, estados de um processo, criação e morte
 |    5 | 24set  | processos -- tabela de processos, funcionamento básico de um SO
-|    6 | 24set  | 
-|    7 |  1out  | 
-|    8 |  3out  | 
-|    9 |  8out  | 
-|   10 | 10out  | 
-|   11 | 15out  | 
-|   12 | 17out  | 
-|   13 | 22out  | 
-|   14 | 24out  | 
-|   15 | 29out  | 
-|   16 | 31out  | 
-|   17 |  5nov  | 
-|   18 |  7nov  | 
-|   19 | 12nov  | 
-|   20 | 14nov  | 
-|   21 | 19nov  | 
-|   22 | 21nov  | 
-|   23 | 26nov  | JAI
-|   24 | 28nov  | JAI
-|   25 |  3dez  | 
-|   26 |  5dez  | 
-|   27 | 10dez  | 
-|   28 | 12dez  | 
+|    6 | 26set  | apresentação do t1
+|      |  1out  | [vade retro vīrus](https://www.ufsm.br/2024/09/30/nota-atividades-administrativas-e-academicas-presenciais-suspensas-ate-01-de-outubro)
+|    7 |  3out  | mais detalhes do t1; escalonamento
+|    8 |  8out  | algoritmos de escalonamento
+|    9 | 10out  | *threads*
+|   10 | 15out  | [programa para teste de threads](Testes/thr.c), comunicação entre processos
+|   11 | 17out  | comunicação entre processos (TSL, semáforo, mutex, monitor, variável de condição; produtor-consumidor)
+|   12 | 22out  | comunicação entre processos (barreira; jantar dos filósofos, leitores+escritores)
+|   13 | 24out  | gerenciamento de memória
+|   14 | 29out  | gerenciamento de memória (memória virtual, segmentação, paginação)
+|   15 | 31out  | gerenciamento de memória (TLB, tabela de páginas invertida)
+|   16 |  5nov  | gerenciamento de memória
+|   17 |  7nov  | apresentação do t2
+|   18 | 12nov  | 
+|   19 | 14nov  | 
+|   20 | 19nov  | 
+|   21 | 21nov  | 
+|   22 | 26nov  | JAI
+|   23 | 28nov  | JAI
+|   24 |  3dez  | 
+|   25 |  5dez  | 
+|   26 | 10dez  | 
+|   27 | 12dez  | 
 |      | 17dez  | sexta-feira
 |      | 19dez  | sábado
 
@@ -109,6 +109,7 @@ Ver [aqui](https://www.ufsm.br/ementario/disciplinas/ELC1080/).
 |    id | prazo | assunto
 | ----: | :---- | :-----------
 | t0    | 24set | [simulador de computador](/Trabalhos/t0) \| entrega = dispositivo rand, programa de adivinhar; forma de entrega: mail com arquivos ou link para git (faz um branch)
-| t1    |       | [implementação de processos](/Trabalhos/t1)
+| t1    | 18nov | [implementação de processos](/Trabalhos/t1)
+| t2    |       | [gerenciamento de memória](/Trabalhos/t2)
 
 
