@@ -1,0 +1,95 @@
+Número de processos criados: 4
+Tempo total de execução: 24049.00
+Tempo total ocioso: 4610.00
+Número total de preempções: 56
+Número de vezes de interrupções por IRQ:
+  IRQ 0: 1 vezes
+  IRQ 1: 0 vezes
+  IRQ 2: 462 vezes
+  IRQ 3: 479 vezes
+  IRQ 4: 0 vezes
+  IRQ 5: 0 vezes
+Processo ID (PID): 1
+Estado: Morto
+Prioridade: 0.39
+Motivo do bloqueio: Espera
+Tipo de bloqueio: 4
+Terminal ID: -1
+Registradores: PC=160, X=0, A=0
+Tempo de retorno: 24049.00
+Número de preempções: 0
+Número de vezes em estados:
+  Estado 0: 3 vezes
+  Estado 1: 3 vezes
+  Estado 2: 2 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 743 ms
+  Estado 1: 0 ms
+  Estado 2: 23306 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 0 ms
+---------------------------------
+Processo ID (PID): 2
+Estado: Morto
+Prioridade: 0.00
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 93
+Terminal ID: -1
+Registradores: PC=7086, X=0, A=0
+Tempo de retorno: 17097.00
+Número de preempções: 39
+Número de vezes em estados:
+  Estado 0: 48 vezes
+  Estado 1: 48 vezes
+  Estado 2: 8 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 9198 ms
+  Estado 1: 7307 ms
+  Estado 2: 592 ms
+  Estado 3: 6569 ms
+Tempo médio de resposta: 152 ms
+---------------------------------
+Processo ID (PID): 3
+Estado: Morto
+Prioridade: 0.02
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 93
+Terminal ID: -1
+Registradores: PC=8088, X=0, A=0
+Tempo de retorno: 11989.00
+Número de preempções: 12
+Número de vezes em estados:
+  Estado 0: 26 vezes
+  Estado 1: 26 vezes
+  Estado 2: 13 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 3756 ms
+  Estado 1: 7403 ms
+  Estado 2: 830 ms
+  Estado 3: 11669 ms
+Tempo médio de resposta: 284 ms
+---------------------------------
+Processo ID (PID): 4
+Estado: Morto
+Prioridade: 0.00
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 93
+Terminal ID: -1
+Registradores: PC=9086, X=0, A=0
+Tempo de retorno: 23331.00
+Número de preempções: 5
+Número de vezes em estados:
+  Estado 0: 110 vezes
+  Estado 1: 110 vezes
+  Estado 2: 104 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 5742 ms
+  Estado 1: 10610 ms
+  Estado 2: 6979 ms
+  Estado 3: 319 ms
+Tempo médio de resposta: 96 ms
+---------------------------------

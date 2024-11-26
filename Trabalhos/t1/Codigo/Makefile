@@ -9,7 +9,7 @@ LDLIBS = -lcurses
 # arquivos objeto compilados (.o) que compõem o simulador (main) e o montador
 OBJS_MAIN = cpu.o es.o memoria.o relogio.o console.o terminal.o tela_curses.o \
 		instrucao.o err.o programa.o controle.o main.o \
-		so.o irq.o
+		so.o irq.o controle_portas.o escalonador.o processo.o
 OBJS_MONTADOR = instrucao.o err.o montador.o
 OBJS = ${OBJS_MAIN} ${OBJS_MONTADOR}
 # arquivos .maq a gerar, com seus endereços
@@ -31,7 +31,8 @@ main: ${OBJS_MAIN}
 # se alguém souber de uma forma menos escrota de casar o endereço com
 # o nome, por favor fala
 %.maq: %.asm montador
-	@m=(${MAQS}); \
+	@bash -c ' \
+	m=(${MAQS}); \
 	e=(${ENDS}); \
 	end=$$( \
 		for i in $$(seq 0 $${#m[@]}); do \
@@ -41,7 +42,7 @@ main: ${OBJS_MAIN}
 			fi; \
 		done \
 	); \
-	./montador -e $$end `basename $@ .maq`.asm > $@
+	./montador -e $$end `basename $@ .maq`.asm > $@'
 
 # apaga os arquivos gerados
 clean:

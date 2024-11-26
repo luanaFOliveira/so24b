@@ -71,6 +71,11 @@ void cpu_destroi(cpu_t *self)
   free(self);
 }
 
+void cpu_copia(cpu_t *self, cpu_t *outro)
+{
+  *outro = *self;
+}
+
 void cpu_define_chamaC(cpu_t *self, func_chamaC_t funcaoC, void *argC)
 {
   self->funcaoC = funcaoC;
