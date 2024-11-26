@@ -71,7 +71,7 @@ void escalonador_remove_processo(escalonador_t *self, processo_t *processo) {
             }
             else if (p == self->inicio) {
                 self->inicio = p->prox;
-                self->fim->prox = self->inicio; 
+                self->fim->prox = self->inicio;
             }
             else if (p == self->fim) {
                 self->fim = ant;
