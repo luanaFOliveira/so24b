@@ -37,10 +37,17 @@ tabpag_t *tabpag_cria(void)
   return self;
 }
 
-void tabpag_destroi(tabpag_t *self)
+void tabpag_destroi(tabpag_t *self, controle_quadros_t *controle_quadros)
 {
   if (self != NULL) {
-    if (self->tabela != NULL) free(self->tabela);
+    if (self->tabela != NULL) {
+      for (int i = 0; i < self->tam_tab; i++) {
+        if (self->tabela[i].valida) {
+          controle_quadros_libera(controle_quadros, self->tabela[i].quadro);
+        }
+      }
+      free(self->tabela);
+    }
     free(self);
   }
 }
@@ -52,10 +59,13 @@ static bool tabpag__pagina_valida(tabpag_t *self, int pagina)
   return self->tabela[pagina].valida;
 }
 
-void tabpag_invalida_pagina(tabpag_t *self, int pagina)
+void tabpag_invalida_pagina(tabpag_t *self, int pagina, controle_quadros_t *controle_quadros)
 {
   // página já é inválida -- não faz nada
   if (!tabpag__pagina_valida(self, pagina)) return;
+  //libera quadro
+  int quadro = self->tabela[pagina].quadro;
+  controle_quadros_libera(controle_quadros, quadro);
   // página não é a última da tabela -- marca como inválida
   if (pagina < self->tam_tab - 1) {
     self->tabela[pagina].valida = false;
@@ -92,9 +102,15 @@ static void tabpag__insere_pagina(tabpag_t *self, int pagina)
   }
 }
 
-void tabpag_define_quadro(tabpag_t *self, int pagina, int quadro)
+void tabpag_define_quadro(tabpag_t *self, int pagina, int quadro, controle_quadros_t *controle_quadros)
 {
   assert(pagina >= 0);
+  if(quadro == -1){
+    quadro = controle_quadros_aloca(controle_quadros);
+    if(quadro == -1){
+      //nenhum quadro livre
+    }
+  }
   tabpag__insere_pagina(self, pagina);
   self->tabela[pagina].quadro = quadro;
   self->tabela[pagina].valida = true;

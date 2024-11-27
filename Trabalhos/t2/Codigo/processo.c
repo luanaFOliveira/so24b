@@ -17,6 +17,9 @@ struct processo_t {
     int tempo_estados[4];
 
     int tempo_medio_resposta;
+
+    tabpag_t *tab_pag;
+
 };
 
 
@@ -43,6 +46,7 @@ processo_t *processo_cria(int id, int pc) {
     }
     self->num_vezes_estados[PRONTO]++;
     
+    self->tab_pag = tabpag_cria();
     return self;
 }
 
@@ -153,6 +157,10 @@ int processo_tempo_estado(processo_t *processo, int estado_id){
     return processo->tempo_estados[estado_id];
 }
 
+tabpag_t *processo_tab_pag(processo_t *processo) {
+    return self->tab_pag;
+}
+
 //setters
 void processo_set_terminal_id(processo_t *processo, int terminal_id){
     if (processo == NULL)
@@ -199,9 +207,11 @@ void processo_set_estado(processo_t *processo,processo_estado_t estado){
 // funcoes
 
 
-void processo_destroi(processo_t *self) {
+void processo_destroi(processo_t *self, mmu_t *mmu,controle_quadros_t *controle_quadros) {
     if (self == NULL)
-        exit(1);   
+        exit(1);
+    tabpag_destroi(self->tab_pag, controle_quadros);
+    mmu_define_tabpag(mmu, NULL);   
     free(self);
 }
 
@@ -239,13 +249,14 @@ void processo_para(processo_t *processo) {
 }
 
 
-void processo_executa(processo_t *processo) {
+void processo_executa(processo_t *processo, mmu_t *mmu) {
     if (processo == NULL)
         exit(1);  
     if(processo->estado == PRONTO){
         processo_set_estado(processo, EM_EXECUCAO);
         //processo->estado = EM_EXECUCAO;
     } 
+    mmu_define_tabpag(mmu, tab_pag);
 }
 
 void processo_encerra(processo_t *processo) {

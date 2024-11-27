@@ -13,6 +13,7 @@
 // mantém para cada página mapeada um bit de acesso e um bit de alteração
 
 #include "err.h"
+#include "controle_quadros.h"
 #include <stdbool.h>
 
 // tipo opaco que representa a tabela de páginas

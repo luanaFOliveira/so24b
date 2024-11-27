@@ -13,10 +13,12 @@
 #include "escalonador.h"
 #include "processo.h"
 #include "controle_portas.h"
+#include "controle_quadros.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <stdio.h>
 
 // CONSTANTES E TIPOS {{{1
 // intervalo entre interrupções do relógio
@@ -44,7 +46,8 @@
 //   representar a inexistência de um processo, coloquei -1. Altere para o seu
 //   tipo, ou substitua os usos de processo_t e NENHUM_PROCESSO para o seu tipo.
 //typedef int processo_t;
-//#define NENHUM_PROCESSO -1
+#define NENHUM_PROCESSO -1
+#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
 
 struct so_t {
   cpu_t *cpu;
@@ -75,11 +78,12 @@ struct so_t {
   // primeiro quadro da memória que está livre (quadros anteriores estão ocupados)
   // t2: com memória virtual, o controle de memória livre e ocupada é mais
   //     completo que isso
-  int quadro_livre;
+  //int quadro_livre;
+  controle_quadros_t *controle_quadros;
   // uma tabela de páginas para poder usar a MMU
   // t2: com processos, não tem esta tabela global, tem que ter uma para
   //     cada processo
-  tabpag_t *tabpag_global;
+  //tabpag_t *tabpag_global;
 };
 
 
@@ -138,7 +142,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   for (int i = 0; i < N_IRQ; i++) {
     self->num_vezes_interrupocoes[i] = 0;
   }
-
+  self->controle_quadros = controle_quadros_cria(TOTAL_QUADROS);
   // quando a CPU executar uma instrução CHAMAC, deve chamar a função
   //   so_trata_interrupcao, com primeiro argumento um ptr para o SO
   cpu_define_chamaC(self->cpu, so_trata_interrupcao, self);
@@ -166,8 +170,8 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   // inicializa a tabela de páginas global, e entrega ela para a MMU
   // t2: com processos, essa tabela não existiria, teria uma por processo, que
   //     deve ser colocada na MMU quando o processo é despachado para execução
-  self->tabpag_global = tabpag_cria();
-  mmu_define_tabpag(self->mmu, self->tabpag_global);
+  // self->tabpag_global = tabpag_cria();
+  // mmu_define_tabpag(self->mmu, self->tabpag_global);
   // define o primeiro quadro livre de memória como o seguinte àquele que
   //   contém o endereço 99 (as 100 primeiras posições de memória (pelo menos)
   //   não vão ser usadas por programas de usuário)
@@ -374,7 +378,6 @@ static int so_despacha(so_t *self)
   } else {
     return 1; 
   }
-  else return 0;
 }
 
 static int so_termina(so_t *self)
@@ -1032,12 +1035,17 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
   int end_virt_fim = end_virt_ini + prog_tamanho(programa) - 1;
   int pagina_ini = end_virt_ini / TAM_PAGINA;
   int pagina_fim = end_virt_fim / TAM_PAGINA;
-  int quadro_ini = self->quadro_livre;
+  //int quadro_ini = self->quadro_livre;
+  int quadro_ini = controle_quadros_aloca(self->controle_quadros);
+  if (quadro_ini == -1) {
+    console_printf("Erro: não há quadros livres disponíveis.\n");
+    return -1; 
+  }
   // mapeia as páginas nos quadros
   int quadro = quadro_ini;
   for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
-    tabpag_define_quadro(self->tabpag_global, pagina, quadro);
-    quadro++;
+    tabpag_define_quadro(self->tabpag_global, pagina, quadro,self->controle_quadros);
+    //quadro++;
   }
   self->quadro_livre = quadro;
 
