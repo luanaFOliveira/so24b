@@ -31,4 +31,7 @@ err_t mem_le(mem_t *self, int endereco, int *pvalor);
 // retorna erro ERR_END_INV se endereço inválido
 err_t mem_escreve(mem_t *self, int endereco, int valor);
 
+int mem_tempo_disponivel(mem_t *self);
+void set_mem_tempo_disponivel(mem_t *self, int tempo);
+
 #endif // MEMORIA_H

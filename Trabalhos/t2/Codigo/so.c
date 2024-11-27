@@ -45,13 +45,14 @@
 //   tem um tipo para isso. Chutei o tipo int. Foi necessário também um valor para
 //   representar a inexistência de um processo, coloquei -1. Altere para o seu
 //   tipo, ou substitua os usos de processo_t e NENHUM_PROCESSO para o seu tipo.
-//typedef int processo_t;
-#define NENHUM_PROCESSO -1
-#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
 
+#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
+#define TAMANHO_MEM_SECUNDARIA 1024
+//@TODO= ver como criar e definir o tamanho da memoria secundaria
 struct so_t {
   cpu_t *cpu;
   mem_t *mem;
+  mem_t *mem_secundaria;
   mmu_t *mmu;
   es_t *es;
   console_t *console;
@@ -111,6 +112,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
 
   self->cpu = cpu;
   self->mem = mem;
+  self->mem_secundaria = mem;
   self->mmu = mmu;
   self->es = es;
   self->console = console;
@@ -155,7 +157,8 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   //   de interrupção (escrito em asm). esse programa deve conter a 
   //   instrução CHAMAC, que vai chamar so_trata_interrupcao (como
   //   foi definido acima)
-  int ender = so_carrega_programa(self, NENHUM_PROCESSO, "trata_int.maq");
+//no lugar de nenhum processo = NULL?
+  int ender = so_carrega_programa(self, self->processo_corrente, "trata_int.maq");
   if (ender != IRQ_END_TRATADOR) {
     console_printf("SO: problema na carga do programa de tratamento de interrupção");
     self->erro_interno = true;
@@ -176,7 +179,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   //   contém o endereço 99 (as 100 primeiras posições de memória (pelo menos)
   //   não vão ser usadas por programas de usuário)
   // t2: o controle de memória livre deve ser mais aprimorado que isso  
-  self->quadro_livre = 99 / TAM_PAGINA + 1;
+  //self->quadro_livre = 99 / TAM_PAGINA + 1;
   return self;
 }
 
@@ -971,6 +974,65 @@ static void so_imprime_metricas(so_t *self){
 
 }
 
+//@TODO - colocar os erros q tem no readme
+static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo)
+{
+  // Verifica se a página não está na memória principal
+  int quadro_fisico;
+  err_t err = mem_le(self->mem, pagina_virt, &quadro_fisico);
+  
+  if (err != ERR_OK || quadro_fisico == -1) {
+      // Verifica se o disco está livre (se o tempo atual é maior ou igual ao tempo de disponibilidade)
+      if (mem_tempo_disponivel(self->mem_secundaria) > get_current_time()) {
+          // O disco não está livre, o processo deve ser bloqueado até que o tempo de disponibilidade passe
+          //@TODO- como fazer isso?
+          so_bloqueia_processo(self, processo, ESPERA, 0);  // Bloqueia o processo até que o disco esteja livre
+          console_printf("Processo %d bloqueado. Aguardando a transferência de página...\n", processo);
+          return false;  // O processo permanece bloqueado até o disco estar livre
+      }
+      
+      // O disco está livre, vamos carregar a página
+      int quadro_secundario;
+      err = mem_le(self->mem_secundaria, pagina_virt, &quadro_secundario);
+      
+      if (err != ERR_OK) {
+          // Página não encontrada na memória secundária
+          console_printf("Erro: Página %d não encontrada na memória secundária.\n", pagina_virt);
+          return false;
+      }
+      
+      // Encontramos a página na memória secundária, agora carregamos ela para a memória principal
+      quadro_fisico = controle_quadros_aloca(self->controle_quadros);
+      
+      if (quadro_fisico == -1) {
+          // Se não houver quadros livres, aplicar política de substituição
+          console_printf("Erro: Não há quadros livres na memória principal.\n");
+          return false;
+      }
+      
+      // Carregar a página da memória secundária para o quadro físico na memória principal
+      err = mem_escreve(self->mem, quadro_fisico, quadro_secundario);
+      if (err != ERR_OK) {
+          console_printf("Erro ao carregar a página da memória secundária para a memória principal.\n");
+          return false;
+      }
+      
+      // Atualizar a tabela de páginas para refletir o novo mapeamento
+      tabpag_define_quadro(self->tab_pag, pagina_virt, quadro_fisico, self->controle_quadros);
+      
+      // Simula o tempo de espera de transferência
+      int tempo_novo = get_current_time() + TEMPO_TRANSFERENCIA;
+      set_mem_tempo_disponivel(self->mem_secundaria, tempo_novo);
+      
+      console_printf("Página %d carregada com sucesso na memória principal (quadro %d).\n", pagina_virt, quadro_fisico);
+      return true;
+  }
+  
+  return false;
+}
+
+
+
 // CARGA DE PROGRAMA {{{1
 
 // funções auxiliares
@@ -981,7 +1043,7 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
 
 // carrega o programa na memória de um processo ou na memória física se NENHUM_PROCESSO
 // retorna o endereço de carga ou -1
-static int so_carrega_programa(so_t *self, processo_t processo,
+static int so_carrega_programa(so_t *self, processo_t *processo,
                                char *nome_do_executavel)
 {
   console_printf("SO: carga de '%s'", nome_do_executavel);
@@ -1036,32 +1098,57 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
   int pagina_ini = end_virt_ini / TAM_PAGINA;
   int pagina_fim = end_virt_fim / TAM_PAGINA;
   //int quadro_ini = self->quadro_livre;
-  int quadro_ini = controle_quadros_aloca(self->controle_quadros);
-  if (quadro_ini == -1) {
-    console_printf("Erro: não há quadros livres disponíveis.\n");
-    return -1; 
-  }
+  // int quadro_ini = controle_quadros_aloca(self->controle_quadros);
+  // if (quadro_ini == -1) {
+  //   console_printf("Erro: não há quadros livres disponíveis.\n");
+  //   return -1; 
+  // }
   // mapeia as páginas nos quadros
-  int quadro = quadro_ini;
   for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
-    tabpag_define_quadro(self->tabpag_global, pagina, quadro,self->controle_quadros);
-    //quadro++;
+    int quadro = controle_quadros_aloca(self->controle_quadros);
+    if (quadro == -1) {
+        console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
+        return -1; // Libere recursos alocados antes de retornar, se necessário
+    }
+    tabpag_define_quadro(self->tab_pag, pagina, quadro, self->controle_quadros);
   }
-  self->quadro_livre = quadro;
+  // int quadro = quadro_ini;
+  // for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
+  //   tabpag_define_quadro(self->tabpag_global, pagina, quadro,self->controle_quadros);
+  //   //quadro++;
+  // }
+  // self->quadro_livre = quadro;
 
   // carrega o programa na memória principal
-  int end_fis_ini = quadro_ini * TAM_PAGINA;
-  int end_fis = end_fis_ini;
-  for (int end_virt = end_virt_ini; end_virt <= end_virt_fim; end_virt++) {
-    if (mem_escreve(self->mem, end_fis, prog_dado(programa, end_virt)) != ERR_OK) {
-      console_printf("Erro na carga da memória, end virt %d fís %d\n", end_virt,
-                     end_fis);
-      return -1;
+  // int end_fis_ini = quadro_ini * TAM_PAGINA;
+  // int end_fis = end_fis_ini;
+  // for (int end_virt = end_virt_ini; end_virt <= end_virt_fim; end_virt++) {
+  //   if (mem_escreve(self->mem, end_fis, prog_dado(programa, end_virt)) != ERR_OK) {
+  //     console_printf("Erro na carga da memória, end virt %d fís %d\n", end_virt,
+  //                    end_fis);
+  //     return -1;
+  //   }
+  //   end_fis++;
+  // }
+  for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
+    int quadro = tabpag_obtem_quadro(self->tab_pag, pagina);
+    int end_fis_ini = quadro * TAM_PAGINA;
+
+    for (int offset = 0; offset < TAM_PAGINA; offset++) {
+        int end_virt = pagina * TAM_PAGINA + offset;
+        int end_fis = end_fis_ini + offset;
+
+        if (end_virt > end_virt_fim) break;
+
+        if (mem_escreve(self->mem, end_fis, prog_dado(programa, end_virt)) != ERR_OK) {
+            console_printf("Erro na carga da memória, end virt %d fís %d\n", end_virt, end_fis);
+            return -1;
+        }
     }
-    end_fis++;
   }
   console_printf("carregado na memória virtual V%d-%d F%d-%d",
                  end_virt_ini, end_virt_fim, end_fis_ini, end_fis - 1);
+
   return end_virt_ini;
 }
 
@@ -1076,23 +1163,64 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
 static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
                                      int end_virt, processo_t processo)
 {
+  // if (processo == NENHUM_PROCESSO) return false;
+  // for (int indice_str = 0; indice_str < tam; indice_str++) {
+  //   int caractere;
+  //   // não tem memória virtual implementada, posso usar a mmu para traduzir
+  //   //   os endereços e acessar a memória
+  //   if (mmu_le(self->mmu, end_virt + indice_str, &caractere, usuario) != ERR_OK) {
+  //     return false;
+  //   }
+  //   if (caractere < 0 || caractere > 255) {
+  //     return false;
+  //   }
+  //   str[indice_str] = caractere;
+  //   if (caractere == 0) {
+  //     return true;
+  //   }
+  // }
+  // // estourou o tamanho de str
+  // return false;
   if (processo == NENHUM_PROCESSO) return false;
+  
   for (int indice_str = 0; indice_str < tam; indice_str++) {
     int caractere;
-    // não tem memória virtual implementada, posso usar a mmu para traduzir
-    //   os endereços e acessar a memória
-    if (mmu_le(self->mmu, end_virt + indice_str, &caractere, usuario) != ERR_OK) {
-      return false;
+    // Calcular a página e o offset do endereço virtual
+    int pagina_virt = (end_virt + indice_str) / TAM_PAGINA;
+    int offset = (end_virt + indice_str) % TAM_PAGINA;
+
+    // Traduzir o endereço virtual para físico através da tabela de páginas
+    int quadro_fisico = tabpag_traduz(self->tab_pag, pagina_virt);
+    if (quadro_fisico == -1) {
+      // A página não está na memória física, precisa carregar da memória secundária
+      if (!so_trata_page_fault(self, pagina_virt, processo)) {
+        return false; // Falha ao tratar o page fault
+      }
+      quadro_fisico = tabpag_traduz(self->tab_pag, pagina_virt);
     }
+
+    // Agora, temos o quadro físico, podemos calcular o endereço físico real
+    int end_fis = quadro_fisico * TAM_PAGINA + offset;
+    
+    // Ler o caractere da memória física
+    if (mem_le(self->mem, end_fis, &caractere) != ERR_OK) {
+      return false; // Falha na leitura da memória
+    }
+
+    // Verificar se o caractere está no intervalo válido
     if (caractere < 0 || caractere > 255) {
       return false;
     }
+
     str[indice_str] = caractere;
+
+    // Se encontrou o caractere nulo, termina a cópia
     if (caractere == 0) {
       return true;
     }
   }
-  // estourou o tamanho de str
+  
+  // Se a string ultrapassar o tamanho do vetor str, retorna erro
   return false;
 }
 

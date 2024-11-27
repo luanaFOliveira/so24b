@@ -12,6 +12,7 @@
 struct mem_t {
   int tam;
   int *conteudo;
+  int tempo_disponivel;
 };
 
 mem_t *mem_cria(int tam)
@@ -24,6 +25,7 @@ mem_t *mem_cria(int tam)
   assert(self->conteudo != NULL);
 
   self->tam = tam;
+  self->tempo_disponivel = 0;
 
   return self;
 }
@@ -41,6 +43,15 @@ void mem_destroi(mem_t *self)
 int mem_tam(mem_t *self)
 {
   return self->tam;
+}
+
+int mem_tempo_disponivel(mem_t *self)
+{
+  return self->tam;
+}
+
+void set_mem_tempo_disponivel(mem_t *self, int tempo){
+  self->tempo_disponivel = tempo;
 }
 
 // função auxiliar, verifica se endereço é válido
