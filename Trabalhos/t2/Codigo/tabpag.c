@@ -151,3 +151,21 @@ err_t tabpag_traduz(tabpag_t *self, int pagina, int *pquadro)
   *pquadro = self->tabela[pagina].quadro;
   return ERR_OK;
 }
+
+int tabpag_encontra_pagina(tabpag_t *self, int quadro_fisico) {
+    for (int i = 0; i < self->tam_tab; i++) {
+        if (self->tabela[i].valida && self->tabela[i].quadro == quadro_fisico) {
+            return i; 
+        }
+    }
+    return -1; 
+}
+
+int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico) {
+    for (int i = 0; i < self->tam_tab; i++) {
+        if (self->tabela[i].modificada && self->tabela[i].quadro == quadro_fisico) {
+            return i; 
+        }
+    }
+    return -1; 
+}

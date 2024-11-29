@@ -84,7 +84,7 @@ struct so_t {
   // uma tabela de páginas para poder usar a MMU
   // t2: com processos, não tem esta tabela global, tem que ter uma para
   //     cada processo
-  tabpag_t *tabpag_global;
+  //tabpag_t *tabpag_global;
   int algoritmo_substituicao; // Para armazenar o algoritmo escolhido
   int fila_quadros[TOTAL_QUADROS]; // Gerenciamento FIFO ou Segunda Chance
   int pos_fila_inicio;            // Início da fila circular
@@ -1061,15 +1061,19 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
             }
 
             // Salvar página substituída se necessário
-            if (pagina_modificada(self->tabpag_global, quadro_fisico)) {
-                int pagina_removida = tabpag_encontra_pagina(self->tabpag_global, quadro_fisico);
-                err = mem_escreve(self->mem_secundaria, pagina_removida, quadro_fisico);
-                if (err != ERR_OK) {
-                    console_printf("Erro ao salvar página substituída.\n");
-                    return false;
-                }
-                tabpag_marcar_nao_mapeada(self->tabpag_global, pagina_removida);
-            }
+           if (tabpag_pagina_modificada(processo_tab_pag(processo), quadro_fisico)) {
+              int pagina_removida = tabpag_encontra_pagina(processo_tab_pag(processo), quadro_fisico);
+              if (pagina_removida == -1) {
+                  console_printf("Erro: Quadro %d não está associado a nenhuma página.\n", quadro_fisico);
+                  return false;
+              }
+              err = mem_escreve(self->mem_secundaria, pagina_removida, quadro_fisico);
+              if (err != ERR_OK) {
+                  console_printf("Erro ao salvar página substituída.\n");
+                  return false;
+              }
+              tabpag_invalida_pagina(processo_tab_pag(processo), pagina_removida, self->controle_quadros);
+          }
         }
 
         // Carregar a página da memória secundária para o quadro físico
@@ -1080,7 +1084,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
         }
 
         // Atualizar a tabela de páginas
-        tabpag_define_quadro(self->tabpag_global, pagina_virt, quadro_fisico, self->controle_quadros);
+        tabpag_define_quadro(processo_tab_pag(processo), pagina_virt, quadro_fisico, self->controle_quadros);
 
         // Atualizar tempo de disponibilidade do disco
         set_mem_tempo_disponivel(self->mem_secundaria, get_current_time() + TEMPO_TRANSFERENCIA);
@@ -1160,44 +1164,48 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
     int pagina_fim = end_virt_fim / TAM_PAGINA;
 
     for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
-        int quadro = controle_quadros_aloca(self->controle_quadros);
-        if (quadro == -1) {
-            console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
-            return -1; // Libere recursos alocados antes de retornar, se necessário
-        }
-        tabpag_define_quadro(self->tabpag_global, pagina, quadro, self->controle_quadros);
-    }
+      // Aloca quadro para a página virtual
+      int quadro = controle_quadros_aloca(self->controle_quadros);
+      if (quadro == -1) {
+          console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
+          return -1; // Retorna em caso de erro
+      }
 
-    // Carrega o programa na memória principal
-    for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
-        int quadro = tabpag_obtem_quadro(self->tabpag_global, pagina);
-        int end_fis_ini = quadro * TAM_PAGINA; // Define o endereço físico inicial
+      // Mapeia a página virtual para o quadro físico
+      tabpag_define_quadro(processo_tab_pag(processo), pagina, quadro, self->controle_quadros);
 
-        for (int offset = 0; offset < TAM_PAGINA; offset++) {
-            int end_virt = pagina * TAM_PAGINA + offset;
-            int end_fis = end_fis_ini + offset;
+      // Carrega os dados do programa para a memória principal
+      int end_fis_ini = quadro * TAM_PAGINA; // Endereço físico inicial
+      for (int offset = 0; offset < TAM_PAGINA; offset++) {
+          int end_virt = pagina * TAM_PAGINA + offset;
+          int end_fis = end_fis_ini + offset;
 
-            // Verifica se o endereço virtual excedeu o tamanho do programa
-            if (end_virt > end_virt_fim) break;
+          // Verifica se o endereço virtual excedeu o tamanho do programa
+          if (end_virt > end_virt_fim) break;
 
-            // Escreve na memória principal
-            if (mem_escreve(self->mem, end_fis, prog_dado(programa, end_virt)) != ERR_OK) {
-                console_printf("Erro na carga da memória, end virt %d fís %d\n", end_virt, end_fis);
-                return -1;
-            }
-        }
-    }
+          // Escreve na memória principal
+          if (mem_escreve(self->mem, end_fis, prog_dado(programa, end_virt)) != ERR_OK) {
+              console_printf("Erro na carga da memória, end virt %d fís %d\n", end_virt, end_fis);
+              return -1;
+          }
+      }
+  }
 
-    // O último endereço físico usado precisa ser definido fora do loop
-    int end_fis = (tabpag_obtem_quadro(self->tabpag_global, pagina_fim) * TAM_PAGINA) + 
-                  ((end_virt_fim % TAM_PAGINA) + 1) - 1;
 
-    console_printf("carregado na memória virtual V%d-%d F%d-%d",
-                   end_virt_ini, end_virt_fim, 
-                   tabpag_obtem_quadro(self->tabpag_global, pagina_ini) * TAM_PAGINA, 
-                   end_fis);
+  err_t err = tabpag_traduz(processo_tab_pag(processo), pagina_fim, &quadro);
+  if (err != ERR_OK) {
+      console_printf("Erro: página %d não mapeada para um quadro.\n", pagina_fim);
+      return -1; // Ou o tratamento adequado para o erro
+  }
 
-    return end_virt_ini;
+  // Calcula o endereço físico final
+  int end_fis = (quadro * TAM_PAGINA) + ((end_virt_fim % TAM_PAGINA) + 1) - 1;
+
+  console_printf("carregado na memória virtual V%d-%d F%d-%d",
+               end_virt_ini, end_virt_fim,
+               end_fis_ini, end_fis);
+
+  return end_virt_ini;
 }
 
 // ACESSO À MEMÓRIA DOS PROCESSOS {{{1
@@ -1238,13 +1246,13 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
     int offset = (end_virt + indice_str) % TAM_PAGINA;
 
     // Traduzir o endereço virtual para físico através da tabela de páginas
-    int quadro_fisico = tabpag_traduz(self->tabpag_global, pagina_virt);
+    int quadro_fisico = tabpag_traduz(processo_tab_pag(processo), pagina_virt);
     if (quadro_fisico == -1) {
       // A página não está na memória física, precisa carregar da memória secundária
       if (!so_trata_page_fault(self, pagina_virt, processo)) {
         return false; // Falha ao tratar o page fault
       }
-      quadro_fisico = tabpag_traduz(self->tabpag_global, pagina_virt);
+      quadro_fisico = tabpag_traduz(processo_tab_pag(processo), pagina_virt);
       if (quadro_fisico == -1) {
                 return false; // Falha na tradução
       }

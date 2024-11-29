@@ -41,6 +41,7 @@ const char* processo_estado_nome(processo_t* processo);
 const char* processo_bloqueio_nome(processo_t* processo);
 int processo_num_vezes_estado(processo_t *processo, int estado_id);
 int processo_tempo_estado(processo_t *processo, int estado_id);
+tabpag_t *processo_tab_pag(processo_t *processo);
 // Setters
 void processo_set_terminal_id(processo_t *processo, int terminal_id);
 void processo_set_PC(processo_t *processo, int pc);

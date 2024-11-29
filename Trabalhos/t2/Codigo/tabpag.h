@@ -62,4 +62,6 @@ bool tabpag_bit_alteracao(tabpag_t *self, int pagina);
 // retorna ERR_PAG_AUSENTE (e não altera '*pquadro') se a página for inválida
 err_t tabpag_traduz(tabpag_t *self, int pagina, int *pquadro);
 
+int tabpag_encontra_pagina(tabpag_t *self, int quadro_fisico);
+int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico);
 #endif // TABPAG_H
