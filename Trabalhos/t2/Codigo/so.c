@@ -17,7 +17,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-
+#include <stdio.h>
+#include <string.h>
 // CONSTANTES E TIPOS {{{1
 // intervalo entre interrupções do relógio
 #define INTERVALO_INTERRUPCAO 50   // em instruções executadas
@@ -27,6 +28,9 @@
 #define TIPO_ESCALONADOR PRIORIDADE
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
+#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
+#define TAMANHO_MEM_SECUNDARIA 1024
+#define TEMPO_TRANSFERENCIA 5
 
 // Não tem processos nem memória virtual, mas é preciso usar a paginação,
 //   pelo menos para implementar relocação, já que os programas estão sendo
@@ -47,9 +51,11 @@
 //   representar a inexistência de um processo, coloquei -1. Altere para o seu
 //   tipo, ou substitua os usos de processo_t e NENHUM_PROCESSO para o seu tipo.
 
-#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
-#define TAMANHO_MEM_SECUNDARIA 1024
+
 //@TODO= ver como criar e definir o tamanho da memoria secundaria
+//@TODO= ver com o benhur sobre a funcao so_copia_str_do_processo que nao esta sendo chamada, onde chamar, no mesmo lugar de copia_str..
+//@TODO= ver com o benhur qual unidade de medida do tempo de transferencia
+//@TODO=  oq seria esse tempo de agora? "atualiza-se esse tempo para "agora" mais o tempo de espera; "
 struct so_t {
   cpu_t *cpu;
   mem_t *mem;
@@ -99,11 +105,11 @@ static int so_trata_interrupcao(void *argC, int reg_A);
 // funções auxiliares
 // no t2, foi adicionado o 'processo' aos argumentos dessas funções 
 // carrega o programa na memória virtual de um processo; retorna end. inicial
-static int so_carrega_programa(so_t *self, processo_t processo,
+static int so_carrega_programa(so_t *self, processo_t *processo,
                                char *nome_do_executavel);
 // copia para str da memória do processo, até copiar um 0 (retorna true) ou tam bytes
 static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
-                                     int end_virt, processo_t processo);
+                                     int end_virt, processo_t *processo);
 static void so_imprime_metricas(so_t *self);
 
 // CRIAÇÃO {{{1
@@ -380,7 +386,7 @@ static int so_despacha(so_t *self)
 
      // Configura a tabela de páginas da MMU
     tabpag_t *tab_pag = processo_tab_pag(processo); // Obtenha a tabela de páginas do processo
-    mmu_set_tab_pag(self->mmu, tab_pag); // Configura a MMU para usar a tabela do processo
+    mmu_define_tabpag(self->mmu, tab_pag); // Configura a MMU para usar a tabela do processo
 
 
     // int reg_val;
@@ -705,7 +711,7 @@ static void so_chamada_cria_proc(so_t *self)
   if(processo == NULL) return;
   int ender_proc = processo_X(processo);
   char nome[100];
-  if (copia_str_da_mem(100, nome, self->mem, ender_proc)) {
+  if (so_copia_str_do_processo(self,100, nome, ender_proc, processo)) {
     processo_t *processo_alvo = so_gera_processo(self, nome);
     if(processo_alvo != NULL)
     {
@@ -802,6 +808,7 @@ static processo_t *so_busca_processo(so_t *self,int pid){
   return self->tabela_processos[pid - 1];
 }
 
+//@TODO = ver como alterar isso agora que so_carrega_programa recebe um processo, mas aqui o processo nao esta gerado ainda
 static processo_t *so_gera_processo(so_t *self, char *programa) {
 
     int end = so_carrega_programa(self, programa);
@@ -1021,7 +1028,7 @@ void atualizar_bit_acesso(so_t *self, int quadro) {
 
 
 //@TODO - colocar os erros q tem no readme
-static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo) {
+static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t *processo) {
     // Verifica se a página já está na memória principal
     int quadro_fisico;
     err_t err = mem_le(self->mem, pagina_virt, &quadro_fisico);
@@ -1072,7 +1079,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
                   console_printf("Erro ao salvar página substituída.\n");
                   return false;
               }
-              tabpag_invalida_pagina(processo_tab_pag(processo), pagina_removida, self->controle_quadros);
+              tabpag_invalida_pagina(processo_tab_pag(processo), pagina_removida);
           }
         }
 
@@ -1084,7 +1091,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
         }
 
         // Atualizar a tabela de páginas
-        tabpag_define_quadro(processo_tab_pag(processo), pagina_virt, quadro_fisico, self->controle_quadros);
+        tabpag_define_quadro(processo_tab_pag(processo), pagina_virt, quadro_fisico);
 
         // Atualizar tempo de disponibilidade do disco
         set_mem_tempo_disponivel(self->mem_secundaria, get_current_time() + TEMPO_TRANSFERENCIA);
@@ -1104,7 +1111,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
 static int so_carrega_programa_na_memoria_fisica(so_t *self, programa_t *programa);
 static int so_carrega_programa_na_memoria_virtual(so_t *self,
                                                   programa_t *programa,
-                                                  processo_t processo);
+                                                  processo_t *processo);
 
 // carrega o programa na memória de um processo ou na memória física se NENHUM_PROCESSO
 // retorna o endereço de carga ou -1
@@ -1120,7 +1127,7 @@ static int so_carrega_programa(so_t *self, processo_t *processo,
   }
 
   int end_carga;
-  if (processo == NENHUM_PROCESSO) {
+  if (processo == NULL) {
     end_carga = so_carrega_programa_na_memoria_fisica(self, programa);
   } else {
     end_carga = so_carrega_programa_na_memoria_virtual(self, programa, processo);
@@ -1147,7 +1154,7 @@ static int so_carrega_programa_na_memoria_fisica(so_t *self, programa_t *program
 
 static int so_carrega_programa_na_memoria_virtual(so_t *self,
                                                   programa_t *programa,
-                                                  processo_t processo)
+                                                  processo_t *processo)
 {
     // t2: isto tá furado...
     // está simplesmente lendo para o próximo quadro que nunca foi ocupado,
@@ -1162,17 +1169,17 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
     int end_virt_fim = end_virt_ini + prog_tamanho(programa) - 1;
     int pagina_ini = end_virt_ini / TAM_PAGINA;
     int pagina_fim = end_virt_fim / TAM_PAGINA;
-
+    int quadro;
     for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
       // Aloca quadro para a página virtual
-      int quadro = controle_quadros_aloca(self->controle_quadros);
+      quadro = controle_quadros_aloca(self->controle_quadros);
       if (quadro == -1) {
           console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
           return -1; // Retorna em caso de erro
       }
 
       // Mapeia a página virtual para o quadro físico
-      tabpag_define_quadro(processo_tab_pag(processo), pagina, quadro, self->controle_quadros);
+      tabpag_define_quadro(processo_tab_pag(processo), pagina, quadro);
 
       // Carrega os dados do programa para a memória principal
       int end_fis_ini = quadro * TAM_PAGINA; // Endereço físico inicial
@@ -1201,9 +1208,8 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
   // Calcula o endereço físico final
   int end_fis = (quadro * TAM_PAGINA) + ((end_virt_fim % TAM_PAGINA) + 1) - 1;
 
-  console_printf("carregado na memória virtual V%d-%d F%d-%d",
-               end_virt_ini, end_virt_fim,
-               end_fis_ini, end_fis);
+  console_printf("carregado na memória virtual V%d-%d %d",
+               end_virt_ini, end_virt_fim,end_fis);
 
   return end_virt_ini;
 }
@@ -1217,7 +1223,7 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
 // T2: Com memória virtual, cada valor do espaço de endereçamento do processo
 //   pode estar em memória principal ou secundária (e tem que achar onde)
 static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
-                                     int end_virt, processo_t processo)
+                                     int end_virt, processo_t *processo)
 {
   // if (processo == NENHUM_PROCESSO) return false;
   // for (int indice_str = 0; indice_str < tam; indice_str++) {
@@ -1237,7 +1243,7 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
   // }
   // // estourou o tamanho de str
   // return false;
-  if (processo == NENHUM_PROCESSO) return false;
+  if (processo == NULL) return false;
   
   for (int indice_str = 0; indice_str < tam; indice_str++) {
     int caractere;
@@ -1245,17 +1251,19 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
     int pagina_virt = (end_virt + indice_str) / TAM_PAGINA;
     int offset = (end_virt + indice_str) % TAM_PAGINA;
 
-    // Traduzir o endereço virtual para físico através da tabela de páginas
-    int quadro_fisico = tabpag_traduz(processo_tab_pag(processo), pagina_virt);
-    if (quadro_fisico == -1) {
-      // A página não está na memória física, precisa carregar da memória secundária
-      if (!so_trata_page_fault(self, pagina_virt, processo)) {
-        return false; // Falha ao tratar o page fault
-      }
-      quadro_fisico = tabpag_traduz(processo_tab_pag(processo), pagina_virt);
-      if (quadro_fisico == -1) {
-                return false; // Falha na tradução
-      }
+    int quadro_fisico;
+    err_t status = tabpag_traduz(processo_tab_pag(processo), pagina_virt, &quadro_fisico);
+
+    if (status == ERR_PAG_AUSENTE) {
+        // A página não está na memória física, precisa carregar da memória secundária
+        if (!so_trata_page_fault(self, pagina_virt, processo)) {
+            return false; // Falha ao tratar o page fault
+        }
+        // Tenta traduzir novamente após tratar o page fault
+        status = tabpag_traduz(processo_tab_pag(processo), pagina_virt, &quadro_fisico);
+        if (status != ERR_OK) {
+            return false; // Falha na tradução
+        }
     }
 
     // Agora, temos o quadro físico, podemos calcular o endereço físico real
