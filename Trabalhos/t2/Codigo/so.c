@@ -13,12 +13,10 @@
 #include "escalonador.h"
 #include "processo.h"
 #include "controle_portas.h"
-#include "controle_quadros.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <stdio.h>
 
 // CONSTANTES E TIPOS {{{1
 // intervalo entre interrupções do relógio
@@ -27,6 +25,9 @@
 #define QUANTUM 5
 #define NUM_TERMINAIS 4
 #define TIPO_ESCALONADOR PRIORIDADE
+#define ALGORITMO_FIFO 0
+#define ALGORITMO_SEGUNDA_CHANCE 1
+
 // Não tem processos nem memória virtual, mas é preciso usar a paginação,
 //   pelo menos para implementar relocação, já que os programas estão sendo
 //   todos montados para serem executados no endereço 0 e o endereço 0
@@ -79,12 +80,16 @@ struct so_t {
   // primeiro quadro da memória que está livre (quadros anteriores estão ocupados)
   // t2: com memória virtual, o controle de memória livre e ocupada é mais
   //     completo que isso
-  //int quadro_livre;
-  controle_quadros_t *controle_quadros;
+  int quadro_livre;
   // uma tabela de páginas para poder usar a MMU
   // t2: com processos, não tem esta tabela global, tem que ter uma para
   //     cada processo
-  //tabpag_t *tabpag_global;
+  tabpag_t *tabpag_global;
+  int algoritmo_substituicao; // Para armazenar o algoritmo escolhido
+    int fila_quadros[TOTAL_QUADROS]; // Gerenciamento FIFO ou Segunda Chance
+    int pos_fila_inicio;            // Início da fila circular
+    int pos_fila_fim;               // Fim da fila circular
+    int bits_acesso[TOTAL_QUADROS]; // Para Segunda Chance
 };
 
 
@@ -129,6 +134,10 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   self->tempo_quantum = QUANTUM;
   self->tempo_restante = 0;
   self->tempo_relogio_atual = -1;
+      self->pos_fila_inicio = 0;
+    self->pos_fila_fim = 0;
+    self->algoritmo_substituicao = ALGORITMO_FIFO; // Escolha padrão
+    memset(self->bits_acesso, 0, sizeof(self->bits_acesso));
 
   self->controle_portas = controle_cria_portas(es);
   controle_registra_porta(self->controle_portas, D_TERM_A_TECLADO, D_TERM_A_TECLADO_OK, D_TERM_A_TELA, D_TERM_A_TELA_OK);
@@ -144,7 +153,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   for (int i = 0; i < N_IRQ; i++) {
     self->num_vezes_interrupocoes[i] = 0;
   }
-  self->controle_quadros = controle_quadros_cria(TOTAL_QUADROS);
+
   // quando a CPU executar uma instrução CHAMAC, deve chamar a função
   //   so_trata_interrupcao, com primeiro argumento um ptr para o SO
   cpu_define_chamaC(self->cpu, so_trata_interrupcao, self);
@@ -173,8 +182,8 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   // inicializa a tabela de páginas global, e entrega ela para a MMU
   // t2: com processos, essa tabela não existiria, teria uma por processo, que
   //     deve ser colocada na MMU quando o processo é despachado para execução
-  // self->tabpag_global = tabpag_cria();
-  // mmu_define_tabpag(self->mmu, self->tabpag_global);
+  self->tabpag_global = tabpag_cria();
+  mmu_define_tabpag(self->mmu, self->tabpag_global);
   // define o primeiro quadro livre de memória como o seguinte àquele que
   //   contém o endereço 99 (as 100 primeiras posições de memória (pelo menos)
   //   não vão ser usadas por programas de usuário)
@@ -367,6 +376,11 @@ static int so_despacha(so_t *self)
     mem_escreve(self->mem, IRQ_END_A, a);
     mem_escreve(self->mem, IRQ_END_X, x);
 
+     // Configura a tabela de páginas da MMU
+    tab_pag_t *tab_pag = processo_tab_pag(processo); // Obtenha a tabela de páginas do processo
+    mmu_set_tab_pag(self->mmu, tab_pag); // Configura a MMU para usar a tabela do processo
+
+
     // int reg_val;
 
     // reg_val = processo_PC(self->processo_corrente);
@@ -381,6 +395,7 @@ static int so_despacha(so_t *self)
   } else {
     return 1; 
   }
+  else return 0;
 }
 
 static int so_termina(so_t *self)
@@ -974,6 +989,36 @@ static void so_imprime_metricas(so_t *self){
 
 }
 
+int substituir_pagina_fifo(so_t *self) {
+    int quadro_removido = self->fila_quadros[self->pos_fila_inicio];
+    self->pos_fila_inicio = (self->pos_fila_inicio + 1) % TOTAL_QUADROS;
+    return quadro_removido;
+}
+
+void adicionar_pagina_fifo(so_t *self, int quadro) {
+    self->fila_quadros[self->pos_fila_fim] = quadro;
+    self->pos_fila_fim = (self->pos_fila_fim + 1) % TOTAL_QUADROS;
+}
+int substituir_pagina_segunda_chance(so_t *self) {
+    while (true) {
+        int quadro_atual = self->fila_quadros[self->pos_fila_inicio];
+        if (self->bits_acesso[quadro_atual] == 0) {
+            self->pos_fila_inicio = (self->pos_fila_inicio + 1) % TOTAL_QUADROS;
+            return quadro_atual; // Substitui página sem segunda chance
+        } else {
+            // Dá segunda chance: zera o bit e move para o fim da fila
+            self->bits_acesso[quadro_atual] = 0;
+            adicionar_pagina_fifo(self, quadro_atual);
+            self->pos_fila_inicio = (self->pos_fila_inicio + 1) % TOTAL_QUADROS;
+        }
+    }
+}
+
+void atualizar_bit_acesso(so_t *self, int quadro) {
+    self->bits_acesso[quadro] = 1; // Indica que o quadro foi acessado
+}
+
+
 //@TODO - colocar os erros q tem no readme
 static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo)
 {
@@ -1005,10 +1050,18 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t processo
       quadro_fisico = controle_quadros_aloca(self->controle_quadros);
       
       if (quadro_fisico == -1) {
-          // Se não houver quadros livres, aplicar política de substituição
-          console_printf("Erro: Não há quadros livres na memória principal.\n");
-          return false;
-      }
+        if (self->algoritmo_substituicao == ALGORITMO_FIFO) {
+            quadro_fisico = substituir_pagina_fifo(self);
+        } else if (self->algoritmo_substituicao == ALGORITMO_SEGUNDA_CHANCE) {
+            quadro_fisico = substituir_pagina_segunda_chance(self);
+        }
+        if (quadro_fisico == -1) {
+            console_printf("Erro: Falha na substituição de páginas.\n");
+            return false;
+        }
+    }
+
+
       
       // Carregar a página da memória secundária para o quadro físico na memória principal
       err = mem_escreve(self->mem, quadro_fisico, quadro_secundario);
@@ -1110,7 +1163,7 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
         console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
         return -1; // Libere recursos alocados antes de retornar, se necessário
     }
-    tabpag_define_quadro(self->tab_pag, pagina, quadro, self->controle_quadros);
+    tabpag_define_quadro(self->tabpag_global, pagina, quadro, self->controle_quadros);
   }
   // int quadro = quadro_ini;
   // for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
