@@ -13,7 +13,7 @@
 #include "escalonador.h"
 #include "processo.h"
 #include "controle_portas.h"
-
+#include "controle_quadros.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -80,16 +80,16 @@ struct so_t {
   // primeiro quadro da memória que está livre (quadros anteriores estão ocupados)
   // t2: com memória virtual, o controle de memória livre e ocupada é mais
   //     completo que isso
-  int quadro_livre;
+  controle_quadros_t *controle_quadros;
   // uma tabela de páginas para poder usar a MMU
   // t2: com processos, não tem esta tabela global, tem que ter uma para
   //     cada processo
   tabpag_t *tabpag_global;
   int algoritmo_substituicao; // Para armazenar o algoritmo escolhido
-    int fila_quadros[TOTAL_QUADROS]; // Gerenciamento FIFO ou Segunda Chance
-    int pos_fila_inicio;            // Início da fila circular
-    int pos_fila_fim;               // Fim da fila circular
-    int bits_acesso[TOTAL_QUADROS]; // Para Segunda Chance
+  int fila_quadros[TOTAL_QUADROS]; // Gerenciamento FIFO ou Segunda Chance
+  int pos_fila_inicio;            // Início da fila circular
+  int pos_fila_fim;               // Fim da fila circular
+  int bits_acesso[TOTAL_QUADROS]; // Para Segunda Chance
 };
 
 
@@ -134,10 +134,10 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   self->tempo_quantum = QUANTUM;
   self->tempo_restante = 0;
   self->tempo_relogio_atual = -1;
-      self->pos_fila_inicio = 0;
-    self->pos_fila_fim = 0;
-    self->algoritmo_substituicao = ALGORITMO_FIFO; // Escolha padrão
-    memset(self->bits_acesso, 0, sizeof(self->bits_acesso));
+  self->pos_fila_inicio = 0;
+  self->pos_fila_fim = 0;
+  self->algoritmo_substituicao = ALGORITMO_FIFO; // Escolha padrão
+  memset(self->bits_acesso, 0, sizeof(self->bits_acesso));
 
   self->controle_portas = controle_cria_portas(es);
   controle_registra_porta(self->controle_portas, D_TERM_A_TECLADO, D_TERM_A_TECLADO_OK, D_TERM_A_TELA, D_TERM_A_TELA_OK);
@@ -145,6 +145,8 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   controle_registra_porta(self->controle_portas, D_TERM_C_TECLADO, D_TERM_C_TECLADO_OK, D_TERM_C_TELA, D_TERM_C_TELA_OK);
   controle_registra_porta(self->controle_portas, D_TERM_D_TECLADO, D_TERM_D_TECLADO_OK, D_TERM_D_TELA, D_TERM_D_TELA_OK);
   
+  self->controle_quadros = controle_quadros_cria(TOTAL_QUADROS);
+
   //metricas
   self->num_processos_criados = 0;
   self->tempo_total_exec = 0;
@@ -182,8 +184,8 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   // inicializa a tabela de páginas global, e entrega ela para a MMU
   // t2: com processos, essa tabela não existiria, teria uma por processo, que
   //     deve ser colocada na MMU quando o processo é despachado para execução
-  self->tabpag_global = tabpag_cria();
-  mmu_define_tabpag(self->mmu, self->tabpag_global);
+  // self->tabpag_global = tabpag_cria();
+  // mmu_define_tabpag(self->mmu, self->tabpag_global);
   // define o primeiro quadro livre de memória como o seguinte àquele que
   //   contém o endereço 99 (as 100 primeiras posições de memória (pelo menos)
   //   não vão ser usadas por programas de usuário)
