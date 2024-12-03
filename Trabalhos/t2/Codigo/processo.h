@@ -17,6 +17,7 @@ typedef enum {
     LEITURA,
     ESCRITA,
     ESPERA,
+    ESPERA_PAGINA,
     SEM_MOTIVO
 } bloqueio_motivo_t;
 
@@ -29,7 +30,7 @@ int processo_pid(processo_t *processo);
 processo_estado_t processo_estado(processo_t *processo);
 bloqueio_motivo_t processo_motivo_bloqueio(processo_t *processo);
 int processo_tipo_bloqueio(processo_t *processo);
-int processo_terminal_id(processo_t *processo);
+int processo_es_id(processo_t *processo);
 int processo_PC(processo_t *processo);
 int processo_A(processo_t *processo);
 int processo_X(processo_t *processo);
@@ -43,7 +44,7 @@ int processo_num_vezes_estado(processo_t *processo, int estado_id);
 int processo_tempo_estado(processo_t *processo, int estado_id);
 tabpag_t *processo_tab_pag(processo_t *processo);
 // Setters
-void processo_set_terminal_id(processo_t *processo, int terminal_id);
+void processo_set_es_id(processo_t *processo, int es_id);
 void processo_set_PC(processo_t *processo, int pc);
 void processo_set_A(processo_t *processo, int a);
 void processo_set_X(processo_t *processo, int x);
@@ -56,7 +57,7 @@ void processo_desbloqueia(processo_t *processo);
 void processo_para(processo_t *processo);
 void processo_executa(processo_t *processo);
 void processo_encerra(processo_t *processo);
-void processo_libera_terminal(processo_t *processo);
+void processo_libera_es(processo_t *processo);
 void atualiza_prioridade(processo_t *processo);
 void processo_metricas(processo_t *processo, int delta);
 #endif 

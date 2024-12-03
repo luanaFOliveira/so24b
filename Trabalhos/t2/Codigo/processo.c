@@ -7,7 +7,7 @@ struct processo_t {
     int pid;
     double prioridade;
     bloqueio_motivo_t motivo_bloqueio;
-    int tipo_bloqueio, terminal_id, PC, X, A;
+    int tipo_bloqueio, es_id, PC, X, A;
 
     //metricas
     float tempo_retorno;
@@ -33,7 +33,7 @@ processo_t *processo_cria(int id, int pc) {
     self->PC = pc;
     self->A = 0;
     self->X = 0;
-    self->terminal_id = -1;
+    self->es_id = -1;
     self->prioridade = 0.5;   
 
     //metricas
@@ -77,10 +77,10 @@ int processo_tipo_bloqueio(processo_t *processo) {
     return processo->tipo_bloqueio;
 }
 
-int processo_terminal_id(processo_t *processo){
+int processo_es_id(processo_t *processo){
     if (processo == NULL)
         exit(1);
-    return processo->terminal_id;
+    return processo->es_id;
 }
 
 int processo_PC(processo_t *processo){
@@ -162,10 +162,10 @@ tabpag_t *processo_tab_pag(processo_t *processo) {
 }
 
 //setters
-void processo_set_terminal_id(processo_t *processo, int terminal_id){
+void processo_set_es_id(processo_t *processo, int es_id){
     if (processo == NULL)
         exit(1);
-    processo->terminal_id = terminal_id;
+    processo->es_id = es_id;
 }
 
 void processo_set_PC(processo_t *processo, int pc){
@@ -267,10 +267,10 @@ void processo_encerra(processo_t *processo) {
     
 }
 
-void processo_libera_terminal(processo_t *processo){
+void processo_libera_es(processo_t *processo){
     if (processo == NULL)
         exit(1);
-    processo->terminal_id = -1;
+    processo->es_id = -1;
 }
 
 void processo_metricas(processo_t *processo, int delta){

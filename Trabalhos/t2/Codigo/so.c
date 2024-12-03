@@ -12,7 +12,7 @@
 #include "instrucao.h"
 #include "escalonador.h"
 #include "processo.h"
-#include "controle_portas.h"
+#include "controle_es.h"
 #include "controle_quadros.h"
 #include <stdlib.h>
 #include <stdbool.h>
@@ -54,7 +54,8 @@
 
 //@TODO= ver como criar e definir o tamanho da memoria secundaria
 //@TODO= ver com o benhur sobre a funcao so_copia_str_do_processo que nao esta sendo chamada, onde chamar, no mesmo lugar de copia_str..
-//@TODO= ver com o benhur qual unidade de medida do tempo de transferencia
+//o procesos q manda eh o processo que chama
+//@TODO= ver com o benhur qual unidade de medida do tempo de transferencia- tipo 10 - quantos tick de relogio - ver q horas sao pelo relogio e ver o tempo - marca la processo ta bloqueado por troca de pagina ate tal hora e na pendencia - outro tipo de bloqueia  - transfere os dados tudo na hora mas bloqueia o processo e manda ele esperar 
 //@TODO=  oq seria esse tempo de agora? "atualiza-se esse tempo para "agora" mais o tempo de espera; "
 struct so_t {
   cpu_t *cpu;
@@ -72,7 +73,7 @@ struct so_t {
 
   escalonador_t *escalonador;
 
-  controle_portas_t *controle_portas;
+  controle_es_t *controle_es;
 
   int tempo_quantum, tempo_restante, tempo_relogio_atual;
 
@@ -145,11 +146,11 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   self->algoritmo_substituicao = ALGORITMO_FIFO; // Escolha padrão
   memset(self->bits_acesso, 0, sizeof(self->bits_acesso));
 
-  self->controle_portas = controle_cria_portas(es);
-  controle_registra_porta(self->controle_portas, D_TERM_A_TECLADO, D_TERM_A_TECLADO_OK, D_TERM_A_TELA, D_TERM_A_TELA_OK);
-  controle_registra_porta(self->controle_portas, D_TERM_B_TECLADO, D_TERM_B_TECLADO_OK, D_TERM_B_TELA, D_TERM_B_TELA_OK);
-  controle_registra_porta(self->controle_portas, D_TERM_C_TECLADO, D_TERM_C_TECLADO_OK, D_TERM_C_TELA, D_TERM_C_TELA_OK);
-  controle_registra_porta(self->controle_portas, D_TERM_D_TECLADO, D_TERM_D_TECLADO_OK, D_TERM_D_TELA, D_TERM_D_TELA_OK);
+  self->controle_es = cria_controle_es(es);
+  controle_registra_dispositivo(self->controle_es, D_TERM_A_TECLADO, D_TERM_A_TECLADO_OK, D_TERM_A_TELA, D_TERM_A_TELA_OK);
+  controle_registra_dispositivo(self->controle_es, D_TERM_B_TECLADO, D_TERM_B_TECLADO_OK, D_TERM_B_TELA, D_TERM_B_TELA_OK);
+  controle_registra_dispositivo(self->controle_es, D_TERM_C_TECLADO, D_TERM_C_TECLADO_OK, D_TERM_C_TELA, D_TERM_C_TELA_OK);
+  controle_registra_dispositivo(self->controle_es, D_TERM_D_TECLADO, D_TERM_D_TECLADO_OK, D_TERM_D_TELA, D_TERM_D_TELA_OK);
   
   self->controle_quadros = controle_quadros_cria(TOTAL_QUADROS);
 
@@ -205,7 +206,7 @@ void so_destroi(so_t *self)
   so_imprime_metricas(self);
   cpu_define_chamaC(self->cpu, NULL, NULL);
   escalonador_destroi(self->escalonador);
-  controle_destroi_portas(self->controle_portas);
+  destroi_controle_es(self->controle_es);
   for (int i = 0; i < self->num_processos; i++) {
     processo_destroi(self->tabela_processos[i]);
   }
@@ -231,12 +232,13 @@ static void so_executa_processo(so_t *self, processo_t *processo);
 static void so_pendencias_leitura(so_t *self, processo_t *processo);
 static void so_pendencias_escrita(so_t *self, processo_t *processo);
 static void so_pendencias_espera(so_t *self, processo_t *processo);
+static void so_pendencias_espera_pagina(so_t *self, processo_t *processo);
 static processo_t *so_busca_processo(so_t *self,int pid);
 static void so_bloqueia_processo(so_t *self, processo_t *processo, bloqueio_motivo_t motivo,int tipo_bloqueio);
 static void so_desbloqueia_processo(so_t *self, processo_t *processo);
 static processo_t *so_gera_processo(so_t *self, char *programa);
 static void so_mata_processo(so_t *self, processo_t *processo);
-static void so_reserva_terminal_processo(so_t *self, processo_t *processo);
+static void so_reserva_es_processo(so_t *self, processo_t *processo);
 static int so_termina(so_t *self);
 static bool so_tem_trabalho(so_t *self);
 static void so_metricas(so_t *self, int delta);
@@ -437,6 +439,9 @@ static void so_pendencias_bloqueio(so_t *self, processo_t *processo)
   case ESPERA:
     so_pendencias_espera(self, processo);
     break;
+  case ESPERA_PAGINA:
+    so_pendencias_espera_pagina(self, processo);
+    break;
   default:
     console_printf("SO: motivo de bloqueio invalido");
     self->erro_interno = true;
@@ -446,39 +451,55 @@ static void so_pendencias_bloqueio(so_t *self, processo_t *processo)
 
 static void so_pendencias_leitura(so_t *self, processo_t *processo) {
 
-    so_reserva_terminal_processo(self, processo);
+    so_reserva_es_processo(self, processo);
 
-    int terminal_id = processo_terminal_id(processo);
+    int es_id = processo_es_id(processo);
     int dado;
-    if (terminal_id != -1 && controle_le_porta(self->controle_portas, terminal_id, &dado)) {
+    if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado)) {
         processo_set_A(processo,dado);  
         so_desbloqueia_processo(self, processo);  
 
-        console_printf("SO: processo %d desbloqueado após leitura no terminal %d", processo_pid(processo), terminal_id);
+        console_printf("SO: processo %d desbloqueado após leitura no terminal %d", processo_pid(processo), es_id);
     } else {
-        console_printf("SO: terminal %d não está pronto para leitura", terminal_id);
+        console_printf("SO: terminal %d não está pronto para leitura", es_id);
     }
    
 }
 
 static void so_pendencias_escrita(so_t *self, processo_t *processo) {
-    so_reserva_terminal_processo(self, processo);
+    so_reserva_es_processo(self, processo);
 
-    int terminal_id = processo_terminal_id(processo);
+    int es_id = processo_es_id(processo);
     int dado = processo_tipo_bloqueio(processo);  
 
-    if (terminal_id != -1 && controle_escreve_porta(self->controle_portas, terminal_id, dado)) {
+    if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado)) {
         processo_set_A(processo,0); 
         so_desbloqueia_processo(self, processo);  
 
-        console_printf("SO: processo %d desbloqueado após escrita no terminal %d", processo_pid(processo), terminal_id);
+        console_printf("SO: processo %d desbloqueado após escrita no terminal %d", processo_pid(processo), es_id);
     } else {
-        console_printf("SO: terminal %d não está pronto para escrita", terminal_id);
+        console_printf("SO: terminal %d não está pronto para escrita", es_id);
     }
     
 }
 
 static void so_pendencias_espera(so_t *self, processo_t *processo) {
+  int pid_alvo = processo_tipo_bloqueio(processo);
+
+  processo_t *processo_alvo = so_busca_processo(self, pid_alvo);
+
+  if (processo_alvo == NULL || processo_estado(processo_alvo) == MORTO) {
+    processo_set_A(processo, 0);
+
+    so_desbloqueia_processo(self, processo);
+
+    console_printf("SO: processo %d - desbloqueia de espera de processo", processo_pid(processo));
+  }
+}
+
+static void so_pendencias_espera_pagina(so_t *self, processo_t *processo) {
+  //@TODO = ver como fazer para esperar um certo tempo passar - tempo de transferencia para desbloquear processo - comparar com o tempo atual do relogio e o tempo que passou
+  // antes disso transferir todos os dados e bloquear o processo
   int pid_alvo = processo_tipo_bloqueio(processo);
 
   processo_t *processo_alvo = so_busca_processo(self, pid_alvo);
@@ -654,14 +675,14 @@ static void so_chamada_le(so_t *self)
   
   if(processo == NULL) return;
 
-  so_reserva_terminal_processo(self, processo);
-  int terminal_id = processo_terminal_id(processo);
+  so_reserva_es_processo(self, processo);
+  int es_id = processo_es_id(processo);
   int dado;
-  if (terminal_id != -1 && controle_le_porta(self->controle_portas, terminal_id, &dado)) {
+  if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado)) {
       processo_set_A(processo,dado);  
       console_printf("Dado %d vindo do processo %d",dado,processo_pid(processo));
   } else {
-      console_printf("SO: terminal %d não está pronto para leitura", terminal_id);
+      console_printf("SO: terminal %d não está pronto para leitura", es_id);
       so_bloqueia_processo(self,processo,LEITURA,0);
   }
   // escreve no reg A do processador
@@ -683,15 +704,15 @@ static void so_chamada_escr(so_t *self)
 
   if(processo == NULL) return;
 
-  so_reserva_terminal_processo(self, processo);
-  int terminal_id = processo_terminal_id(processo);
+  so_reserva_es_processo(self, processo);
+  int es_id = processo_es_id(processo);
   int dado = processo_X(processo); 
 
-  if (terminal_id != -1 && controle_escreve_porta(self->controle_portas, terminal_id, dado)) {
+  if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado)) {
       processo_set_A(processo,0);  
 
   } else {
-      console_printf("SO: terminal %d não está pronto para escrita", terminal_id);
+      console_printf("SO: terminal %d não está pronto para escrita", es_id);
       so_bloqueia_processo(self,processo,ESCRITA,dado);
   }
 }
@@ -789,15 +810,15 @@ static void so_desbloqueia_processo(so_t *self, processo_t *processo){
   escalonador_adiciona_processo(self->escalonador,processo);
 }
 
-static void so_reserva_terminal_processo(so_t *self, processo_t *processo)
+static void so_reserva_es_processo(so_t *self, processo_t *processo)
 {
-  if (processo_terminal_id(processo) != -1) {
+  if (processo_es_id(processo) != -1) {
     return;
   }
 
-  int terminal_id = controle_porta_disponivel(self->controle_portas);
-  processo_set_terminal_id(processo, terminal_id);
-  controle_reserva_porta(self->controle_portas, terminal_id);
+  int es_id = controle_dispositivo_disponivel(self->controle_es);
+  processo_set_es_id(processo, es_id);
+  controle_reserva_dispositivo(self->controle_es, es_id);
 }
 
 static processo_t *so_busca_processo(so_t *self,int pid){
@@ -834,11 +855,11 @@ static processo_t *so_gera_processo(so_t *self, char *programa) {
 
 
 static void so_mata_processo(so_t *self, processo_t *processo) {
-    int terminal_id = processo_terminal_id(processo);
+    int es_id = processo_es_id(processo);
 
-    if (terminal_id != -1) {
-        processo_libera_terminal(processo);
-        controle_libera_porta(self->controle_portas,terminal_id);
+    if (es_id != -1) {
+        processo_libera_es(processo);
+        controle_libera_dispositivo(self->controle_es,es_id);
     }
 
     escalonador_remove_processo(self->escalonador, processo);
@@ -973,7 +994,7 @@ static void so_imprime_metricas(so_t *self){
     fprintf(file, "Prioridade: %.2f\n", processo_prioridade(processo));
     fprintf(file, "Motivo do bloqueio: %s\n", processo_bloqueio_nome(processo)); 
     fprintf(file, "Tipo de bloqueio: %d\n", processo_tipo_bloqueio(processo));
-    fprintf(file, "Terminal ID: %d\n", processo_terminal_id(processo));
+    fprintf(file, "Terminal ID: %d\n", processo_es_id(processo));
     fprintf(file, "Registradores: PC=%d, X=%d, A=%d\n", processo_PC(processo), processo_X(processo), processo_A(processo));
 
     fprintf(file, "Tempo de retorno: %.2f\n", processo_tempo_retorno(processo));
@@ -1037,6 +1058,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t *process
         // Verifica se o disco está livre
         int tempo_disponivel = mem_tempo_disponivel(self->mem_secundaria);
         if (tempo_disponivel > get_current_time()) {
+            //pega a hora do relogio
             // O disco está ocupado; bloquear o processo até que esteja disponível
             //@TODO- como fazer isso?
             so_bloqueia_processo(self, processo, ESPERA, tempo_disponivel - get_current_time());
