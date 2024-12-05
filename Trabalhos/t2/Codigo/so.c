@@ -500,17 +500,12 @@ static void so_pendencias_espera(so_t *self, processo_t *processo) {
 static void so_pendencias_espera_pagina(so_t *self, processo_t *processo) {
   //@TODO = ver como fazer para esperar um certo tempo passar - tempo de transferencia para desbloquear processo - comparar com o tempo atual do relogio e o tempo que passou
   // antes disso transferir todos os dados e bloquear o processo
-  int pid_alvo = processo_tipo_bloqueio(processo);
+  int tempo_bloqueio = processo_tipo_bloqueio(processo);
 
-  processo_t *processo_alvo = so_busca_processo(self, pid_alvo);
-
-  if (processo_alvo == NULL || processo_estado(processo_alvo) == MORTO) {
+  if (self->tempo_relogio_atual >= tempo_bloqueio + TEMPO_TRANSFERENCIA) {
     processo_set_A(processo, 0);
-
     so_desbloqueia_processo(self, processo);
-
-    console_printf("SO: processo %d - desbloqueia de espera de processo", processo_pid(processo));
-  }
+  } 
 }
 
 
@@ -1057,11 +1052,11 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t *process
     if (err != ERR_OK || quadro_fisico == -1) {
         // Verifica se o disco está livre
         int tempo_disponivel = mem_tempo_disponivel(self->mem_secundaria);
-        if (tempo_disponivel > get_current_time()) {
+        if (tempo_disponivel > self->tempo_relogio_atual) {
             //pega a hora do relogio
             // O disco está ocupado; bloquear o processo até que esteja disponível
-            //@TODO- como fazer isso?
-            so_bloqueia_processo(self, processo, ESPERA, tempo_disponivel - get_current_time());
+            //@TODO- mando como argumento do bloqueio a hora que era quando bloqueou o processo
+            so_bloqueia_processo(self, processo, ESPERA_PAGINA, tempo_disponivel - self->tempo_relogio_atual);
             console_printf("Processo %d bloqueado aguardando disco.\n", processo);
             return false;
         }
@@ -1116,7 +1111,7 @@ static bool so_trata_page_fault(so_t *self, int pagina_virt, processo_t *process
         tabpag_define_quadro(processo_tab_pag(processo), pagina_virt, quadro_fisico);
 
         // Atualizar tempo de disponibilidade do disco
-        set_mem_tempo_disponivel(self->mem_secundaria, get_current_time() + TEMPO_TRANSFERENCIA);
+        set_mem_tempo_disponivel(self->mem_secundaria, self->tempo_relogio_atual + TEMPO_TRANSFERENCIA);
 
         console_printf("Página %d carregada no quadro %d.\n", pagina_virt, quadro_fisico);
         return true;
