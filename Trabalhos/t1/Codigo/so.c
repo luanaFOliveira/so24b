@@ -271,17 +271,6 @@ static int so_despacha(so_t *self) {
         mem_escreve(self->mem, IRQ_END_PC, pc);
         mem_escreve(self->mem, IRQ_END_A, a);
         mem_escreve(self->mem, IRQ_END_X, x);
-
-        // int reg_val;
-
-        // reg_val = processo_PC(self->processo_corrente);
-        // mem_escreve(self->mem, IRQ_END_PC, reg_val);
-
-        // reg_val = processo_A(self->processo_corrente);
-        // mem_escreve(self->mem, IRQ_END_A, reg_val);
-
-        // reg_val = processo_X(self->processo_corrente);
-        // mem_escreve(self->mem, IRQ_END_X, reg_val);
         return 0; 
     } else {
         return 1; 
@@ -301,19 +290,6 @@ static void so_salva_estado_da_cpu(so_t *self) {
         processo_set_PC(processo, pc);
         processo_set_A(processo, a);
         processo_set_X(processo, x);
-
-        // int reg_val;
-       
-        // // Salva o valor do PC (program counter) e modo (supervisor/usuário).
-        // mem_le(self->mem, IRQ_END_PC, &reg_val);
-        // processo_set_PC(self->processo_corrente, reg_val);
-
-        // mem_le(self->mem, IRQ_END_A, &reg_val);
-        // processo_set_A(self->processo_corrente, reg_val);
-
-        // mem_le(self->mem, IRQ_END_X, &reg_val);
-        // processo_set_X(self->processo_corrente, reg_val);
-       // console_printf("salvou estado da cpu");
     }
     return;
 }
@@ -460,7 +436,6 @@ static void so_trata_irq_reset(so_t *self)
   mem_escreve(self->mem, IRQ_END_modo, usuario);
 }
 
-//@TODO= falta colocar aqui o suporte
 // interrupção gerada quando a CPU identifica um erro
 static void so_trata_irq_err_cpu(so_t *self)
 {
@@ -767,14 +742,6 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
         processo_executa(processo);
     }
 
-    // if (processo == NULL) {
-    //     console_printf("Erro: Tentativa de executar um processo NULL.\n");
-    //     return;
-    // }
-    // if (self->processo_corrente == NULL) {
-    //     console_printf("Erro: Processo corrente NULL.\n");
-    // }
-
   
     if( processo != NULL){
       escalonador_remove_processo(self->escalonador, processo);
@@ -790,17 +757,6 @@ static bool so_deve_escalonar(so_t *self){
   if (self->processo_corrente == NULL || processo_estado(self->processo_corrente) != EM_EXECUCAO || self->tempo_restante <= 0) {
     return true;
   }
-  // if (self->processo_corrente == NULL) {
-  //   return true;
-  // }
-
-  // if (processo_estado(self->processo_corrente) != EM_EXECUCAO) {
-  //   return true;
-  // }
-
-  // if (self->tempo_restante <= 0) {
-  //   return true;
-  // }
   return false;
 }
 
