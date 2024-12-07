@@ -28,17 +28,17 @@ tabpag_t *tabpag_cria(void);
 // destrói uma tabela de páginas
 // libera a memória ocupara pela tabela
 // nenhuma outra operação pode ser realizada na tabela após esta chamada
-void tabpag_destroi(tabpag_t *self);
+void tabpag_destroi(tabpag_t *self, controle_quadros_t *controle_quadros);
 
 // define que a tradução da página 'pagina' deve resultar no quadro 'quadro'
 // essa página é marcada como válida, e os bits de acesso e alteração para essa
 //   página são zerados
 // páginas sem quadro definido são consideradas inválidas
-void tabpag_define_quadro(tabpag_t *self, int pagina, int quadro);
+void tabpag_define_quadro(tabpag_t *self, int pagina, int quadro, controle_quadros_t *controle_quadros);
 
 // marca a página 'pagina' como inválida.
 // as informações sobre essa página são perdidas.
-void tabpag_invalida_pagina(tabpag_t *self, int pagina);
+void tabpag_invalida_pagina(tabpag_t *self, int pagina, controle_quadros_t *controle_quadros);
 
 // marca o bit de acesso à página; se alteracao for true, marca também o
 //   bit de alteração

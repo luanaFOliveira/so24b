@@ -27,13 +27,13 @@ escalonador_t *escalonador_cria(escalonador_tipo_t tipo_escalonador) {
     return self;
 }
 
-void escalonador_destroi(escalonador_t *self) {
+void escalonador_destroi(escalonador_t *self, mmu_t *mmu,controle_quadros_t *controle_quadros) {
     if (self == NULL) return;
 
     no_t *p = self->inicio;
     while (p != NULL) {
         no_t *t = p->prox;
-        processo_destroi(p->processo);
+        processo_destroi(p->processo, mmu, controle_quadros);
         free(p);
         if (t == self->inicio) break;
         p = t;
@@ -44,7 +44,6 @@ void escalonador_destroi(escalonador_t *self) {
 
 void escalonador_adiciona_processo(escalonador_t *self, processo_t *processo) {
     if (self == NULL || processo == NULL) return;
-    console_printf("Adicionando processo %p ao escalonador\n", processo);
     no_t *no = (no_t *) malloc(sizeof(*no));
     no->processo = processo;
     no->prox = self->inicio;

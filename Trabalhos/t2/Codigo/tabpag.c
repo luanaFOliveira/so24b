@@ -163,7 +163,7 @@ int tabpag_encontra_pagina(tabpag_t *self, int quadro_fisico) {
 
 int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico) {
     for (int i = 0; i < self->tam_tab; i++) {
-        if (self->tabela[i].modificada && self->tabela[i].quadro == quadro_fisico) {
+        if (self->tabela[i].alterada && self->tabela[i].quadro == quadro_fisico) {
             return i; 
         }
     }

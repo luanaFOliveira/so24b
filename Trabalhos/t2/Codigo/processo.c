@@ -158,7 +158,7 @@ int processo_tempo_estado(processo_t *processo, int estado_id){
 }
 
 tabpag_t *processo_tab_pag(processo_t *processo) {
-    return self->tab_pag;
+    return processo->tab_pag;
 }
 
 //setters
@@ -256,7 +256,7 @@ void processo_executa(processo_t *processo, mmu_t *mmu) {
         processo_set_estado(processo, EM_EXECUCAO);
         //processo->estado = EM_EXECUCAO;
     } 
-    mmu_define_tabpag(mmu, tab_pag);
+    mmu_define_tabpag(mmu, processo->tab_pag);
 }
 
 void processo_encerra(processo_t *processo) {
