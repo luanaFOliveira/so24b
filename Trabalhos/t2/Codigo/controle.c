@@ -43,6 +43,7 @@ void controle_destroi(controle_t *self)
 void controle_laco(controle_t *self)
 {
   // executa uma instrução por vez até a console dizer que chega
+  console_printf("\n\nInício da execução.\n\n");  
   do {
     if (self->estado == passo || self->estado == executando) {
       cpu_executa_1(self->cpu);
@@ -64,8 +65,6 @@ void controle_laco(controle_t *self)
     controle_atualiza_estado_na_console(self);
   } while (self->estado != fim);
 
-  console_printf("Fim da execução.");
-  console_printf("relógio: %d\n", relogio_agora(self->relogio));
 }
  
 

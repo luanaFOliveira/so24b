@@ -399,6 +399,7 @@ static int so_despacha(so_t *self)
     mmu_define_tabpag(self->mmu, tab_pag); // Configura a MMU para usar a tabela do processo
 
 
+
     // int reg_val;
 
     // reg_val = processo_PC(self->processo_corrente);
@@ -561,7 +562,8 @@ static void so_trata_irq_reset(so_t *self)
   // t2: deveria criar um processo, e programar a tabela de páginas dele
   processo_t *processo = so_gera_processo(self, "init.maq");
   int ender = so_carrega_programa(self, processo, "init.maq");
-  if (ender != 100) {
+  if (ender != 0) {
+
     console_printf("SO: problema na carga do programa inicial");
     self->erro_interno = true;
     return;
@@ -805,6 +807,7 @@ static void so_chamada_espera_proc(so_t *self)
 
 static void so_bloqueia_processo(so_t *self, processo_t *processo, bloqueio_motivo_t motivo,int tipo_bloqueio){
   escalonador_remove_processo(self->escalonador, processo);
+  console_printf("\nProcesso %d bloqueado.\n", processo_pid(processo));
   so_calcula_mudanca_estado_processo(self,processo);
   processo_bloqueia(processo, motivo, tipo_bloqueio);
 }
@@ -869,11 +872,11 @@ static void so_mata_processo(so_t *self, processo_t *processo) {
     }
 
     escalonador_remove_processo(self->escalonador, processo);
+    console_printf("\nProcesso %d morto.\n", processo_pid(processo));
     processo_encerra(processo);
 }
 
 static void so_executa_processo(so_t *self, processo_t *processo) {
-    console_printf("save Executando processo %d.\n", processo_pid(processo));
 
     if (self->processo_corrente != NULL && self->processo_corrente != processo && processo_estado(self->processo_corrente) == EM_EXECUCAO) {
         console_printf("Parando processo.\n");
@@ -881,7 +884,6 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
         so_calcula_mudanca_estado_processo(self, self->processo_corrente);
         self->num_total_preempcoes++;
     }
-
     if (processo != NULL && processo_estado(processo) != EM_EXECUCAO) {
         processo_executa(processo, self->mmu);
     }
@@ -1154,12 +1156,9 @@ static int so_carrega_programa(so_t *self, processo_t *processo,
 
   int end_carga;
   if (processo == NULL) {
-    console_printf("\n\nSO: carregando1 programa na memória física processo %d\n", processo_pid(processo));
     end_carga = so_carrega_programa_na_memoria_fisica(self, programa);
   } else {
-    console_printf("\n\nSO: carregando2 programa na memória virtual processo %d\n", processo_pid(processo));
     end_carga = so_carrega_programa_na_memoria_virtual(self, programa, processo);
-    console_printf("\n end carga %d\n", end_carga);
   }
 
 
@@ -1178,7 +1177,6 @@ static int so_carrega_programa_na_memoria_fisica(so_t *self, programa_t *program
       return -1;
     }
   }
-  console_printf("\ncarregado na memória física, %d-%d\n", end_ini, end_fim);
   return end_ini;
 }
 

@@ -1,0 +1,11 @@
+Número de processos criados: 0
+Tempo total de execução: 0.00
+Tempo total ocioso: 0.00
+Número total de preempções: 0
+Número de vezes de interrupções por IRQ:
+  IRQ 0: 0 vezes
+  IRQ 1: 0 vezes
+  IRQ 2: 0 vezes
+  IRQ 3: 0 vezes
+  IRQ 4: 0 vezes
+  IRQ 5: 0 vezes

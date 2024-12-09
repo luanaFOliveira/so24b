@@ -7,6 +7,7 @@
 #include "cpu.h"
 #include "err.h"
 #include "instrucao.h"
+#include "console.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -475,6 +476,8 @@ void cpu_executa_1(cpu_t *self)
   //   o SO dizer que não tem mais nada para fazer, e deve-se deixar a CPU dormindo
   //   até que venha uma interrupção de E/S
   if (self->erro != ERR_OK && self->erro != ERR_CPU_PARADA) {
+    console_printf("\n\nerro%d(%d) %s\n",
+                self->erro, self->complemento, err_nome(self->erro));
     // se a interrupção não é aceita nesse ponto, temos um problema grave...
     assert(cpu_interrompe(self, IRQ_ERR_CPU));
   }

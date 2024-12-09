@@ -85,6 +85,7 @@ void escalonador_remove_processo(escalonador_t *self, processo_t *processo) {
         ant = p;
         p = p->prox;
     } while (p != self->inicio);
+    console_printf("Processo não encontrado\n");
 }
 
 
