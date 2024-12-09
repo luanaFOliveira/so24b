@@ -142,6 +142,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   self->tabela_processos = malloc(self->tamanho_tabela_processos * sizeof(processo_t *));
 
 
+
   self->tempo_quantum = QUANTUM;
   self->tempo_restante = 0;
   self->tempo_relogio_atual = -1;
@@ -271,7 +272,6 @@ static int so_trata_interrupcao(void *argC, int reg_A)
   so_t *self = argC;
   irq_t irq = reg_A;
   // esse print polui bastante, recomendo tirar quando estiver com mais confiança
-  console_printf("SO: recebi IRQ %d (%s)", irq, irq_nome(irq));
   // salva o estado da cpu no descritor do processo que foi interrompido
   so_salva_estado_da_cpu(self);
   so_tick(self);
@@ -282,6 +282,7 @@ static int so_trata_interrupcao(void *argC, int reg_A)
   // escolhe o próximo processo a executar
   so_escalona(self);
   // recupera o estado do processo escolhido
+
   if(so_tem_trabalho(self)) return so_despacha(self);
   else return so_termina(self);
 }
@@ -843,11 +844,11 @@ static processo_t *so_gera_processo(so_t *self, char *programa) {
     int end = so_carrega_programa(self, NULL ,programa);
 
 
-    if (end <= 0) {
+    if (end < 0) {
         return NULL;
     }
-
     if (self->num_processos == self->tamanho_tabela_processos) {
+      console_printf("Aumentando tamanho da tabela de processos");
       self->tamanho_tabela_processos = self->tamanho_tabela_processos *2;
       self->tabela_processos = realloc(self->tabela_processos, self->tamanho_tabela_processos * sizeof(*self->tabela_processos));
       if(self->tabela_processos == NULL){
