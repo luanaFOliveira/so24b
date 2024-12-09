@@ -29,7 +29,7 @@
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
 #define TOTAL_QUADROS 1024 // Número total de quadros na memória física
-#define TAMANHO_MEM_SECUNDARIA 1024
+#define TAMANHO_MEM_SECUNDARIA 10000
 #define TEMPO_TRANSFERENCIA 5
 
 // Não tem processos nem memória virtual, mas é preciso usar a paginação,
@@ -384,7 +384,6 @@ static int so_despacha(so_t *self)
   // t1: se houver processo corrente, coloca o estado desse processo onde ele
   //   será recuperado pela CPU (em IRQ_END_*) e retorna 0, senão retorna 1
   // o valor retornado será o valor de retorno de CHAMAC
-<<<<<<< HEAD
   if(self->erro_interno) return 1;
   processo_t *processo = self->processo_corrente;
   if (processo != NULL) {
@@ -414,12 +413,6 @@ static int so_despacha(so_t *self)
   } else {
     return 1; 
   }
-=======
-  // passa o processador para modo usuário
-  mem_escreve(self->mem, IRQ_END_erro, ERR_OK);
-  if (self->erro_interno) return 1;
-  else return 0;
->>>>>>> upstream/main
 }
 
 static int so_termina(so_t *self)
@@ -1193,7 +1186,6 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
                                                   programa_t *programa,
                                                   processo_t *processo)
 {
-<<<<<<< HEAD
     // t2: isto tá furado...
     // está simplesmente lendo para o próximo quadro que nunca foi ocupado,
     //   nem testa se tem memória disponível
@@ -1215,29 +1207,6 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
           console_printf("Erro: memória insuficiente para alocar página %d.\n", pagina);
           return -1; // Retorna em caso de erro
       }
-=======
-  // t2: isto tá furado...
-  // está simplesmente lendo para o próximo quadro que nunca foi ocupado,
-  //   nem testa se tem memória disponível
-  // com memória virtual, a forma mais simples de implementar a carga de um
-  //   programa é carregá-lo para a memória secundária, e mapear todas as páginas
-  //   da tabela de páginas do processo como inválidas. Assim, as páginas serão
-  //   colocadas na memória principal por demanda. Para simplificar ainda mais, a
-  //   memória secundária pode ser alocada da forma como a principal está sendo
-  //   alocada aqui (sem reuso)
-  int end_virt_ini = prog_end_carga(programa);
-  int end_virt_fim = end_virt_ini + prog_tamanho(programa) - 1;
-  int pagina_ini = end_virt_ini / TAM_PAGINA;
-  int pagina_fim = end_virt_fim / TAM_PAGINA;
-  int quadro_ini = self->quadro_livre;
-  // mapeia as páginas nos quadros
-  int quadro = quadro_ini;
-  for (int pagina = pagina_ini; pagina <= pagina_fim; pagina++) {
-    //tabpag_define_quadro(self->tabpag_global, pagina, quadro);
-    quadro++;
-  }
-  self->quadro_livre = quadro;
->>>>>>> upstream/main
 
       // Mapeia a página virtual para o quadro físico
       tabpag_define_quadro(processo_tab_pag(processo), pagina, quadro, self->controle_quadros);
@@ -1302,7 +1271,7 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
   //     return true;
   //   }
   // }
-  // // estourou o tamanho de str
+  // // estourou o tamanho de strdfsfd
   // return false;
   if (processo == NULL) return false;
   
@@ -1326,7 +1295,7 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
             return false; // Falha na tradução
         }
     }
-
+//novo comentario pro make nfofhoashf
     // Agora, temos o quadro físico, podemos calcular o endereço físico real
     int end_fis = quadro_fisico * TAM_PAGINA + offset;
     
