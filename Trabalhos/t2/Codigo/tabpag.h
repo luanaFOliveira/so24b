@@ -67,4 +67,5 @@ int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico);
 
 int tabpag__pagina_quadro(tabpag_t *self, int pagina);
 bool tabpag__pagina_valida(tabpag_t *self, int pagina);
+void tabpag_invalida_quadro(tabpag_t *self, int quadro, controle_quadros_t *controle_quadros);
 #endif // TABPAG_H

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "controle_blocos.h"
 
+// Criação do controle de blocos
 controle_blocos_t *cria_controle_blocos(int tam) {
     controle_blocos_t *self = malloc(sizeof(controle_blocos_t));
     if (!self) {
@@ -24,4 +25,23 @@ controle_blocos_t *cria_controle_blocos(int tam) {
     }
 
     return self;
+}
+
+bool controle_blocos_bloco_disponivel(controle_blocos_t *self) {
+    for (int i = 0; i < self->total_blocos; i++) {
+        if (!self->blocos[i].em_uso) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Encontra o índice de um bloco livre
+int controle_blocos_busca_bloco_disponivel(controle_blocos_t *self) {
+    for (int i = 0; i < self->total_blocos; i++) {
+        if (!self->blocos[i].em_uso) {
+            return i;
+        }
+    }
+    return -1;
 }

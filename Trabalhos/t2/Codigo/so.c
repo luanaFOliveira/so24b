@@ -505,16 +505,18 @@ static void so_pendencias_espera(so_t *self, processo_t *processo) {
 }
 
 static void so_pendencias_espera_pagina(so_t *self, processo_t *processo) {
-  console_printf("SO: pendencias espera pagina");
-  //@TODO = ver como fazer para esperar um certo tempo passar - tempo de transferencia para desbloquear processo - comparar com o tempo atual do relogio e o tempo que passou
-  // antes disso transferir todos os dados e bloquear o processo
+  console_printf("SO: verificando pendências de espera por página para o processo %d\n", 
+      processo_pid(processo));
+
   int tempo_bloqueio = processo_tipo_bloqueio(processo);
 
   if (self->tempo_relogio_atual >= tempo_bloqueio + TEMPO_TRANSFERENCIA) {
-    processo_set_A(processo, 0);
-    so_desbloqueia_processo(self, processo);
-  } 
+      console_printf("SO: desbloqueando processo %d\n", processo_pid(processo));
+      processo_set_A(processo, 0); // Atualiza o estado interno do processo, se necessário
+      so_desbloqueia_processo(self, processo);
+  }
 }
+
 
 
 // TRATAMENTO DE UMA IRQ {{{1
@@ -897,60 +899,14 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
     self->tempo_restante = QUANTUM;
 }
 
-// static void so_executa_processo(so_t *self, processo_t *processo) {
-//     console_printf("dentro de executa processo %d.\n", processo_pid(processo));
 
-//     // if (self->processo_corrente != NULL && self->processo_corrente != processo && processo_estado(self->processo_corrente) == EM_EXECUCAO) {
-//     //     console_printf("Parando processo.\n");
-//     //     processo_para(self->processo_corrente);
-//     //     so_calcula_mudanca_estado_processo(self, self->processo_corrente);
-//     //     self->num_total_preempcoes++;
-//     // }
-//     if (self->processo_corrente != NULL && self->processo_corrente != processo && processo_estado(self->processo_corrente) == EM_EXECUCAO) {
-//         console_printf("Parando processo.\n");
-//         processo_para(self->processo_corrente);
-//         so_calcula_mudanca_estado_processo(self, self->processo_corrente);
-//         self->num_total_preempcoes++;
-
-//         // Se o processo que foi pausado não está morto, re-insira no escalonador para execução posterior
-//         if (processo_estado(self->processo_corrente) != MORTO) {
-//             //console_printf("Processo preemptado, re-inserindo no escalonador.\n");
-//             escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
-//         }
-//     }
-
-//     if (processo != NULL && processo_estado(processo) != EM_EXECUCAO) {
-//         console_printf("Executando processo.\n");
-//         processo_executa(processo, self->mmu);
-//     }
-
-   
-//     if (processo != NULL && processo_estado(processo) != MORTO) {
-//         //console_printf("SO: escalonador removeu processo - na hora de executar o processo não era null, %d", processo_pid(processo));
-//         escalonador_remove_processo(self->escalonador, processo);
-//         //console_printf("SO: depois de remover processo do escalonador, %d", processo_pid(processo));
-//     }
-
-//     self->processo_corrente = processo;
-//     self->tempo_restante = QUANTUM;
-// }
 
 
 static bool so_deve_escalonar(so_t *self){
   if (self->processo_corrente == NULL || processo_estado(self->processo_corrente) != EM_EXECUCAO || self->tempo_restante <= 0) {
     return true;
   }
-  // if (self->processo_corrente == NULL) {
-  //   return true;
-  // }
-
-  // if (processo_estado(self->processo_corrente) != EM_EXECUCAO) {
-  //   return true;
-  // }
-
-  // if (self->tempo_restante <= 0) {
-  //   return true;
-  // }
+  
   return false;
 }
 
@@ -1084,91 +1040,222 @@ void atualizar_bit_acesso(so_t *self, int quadro) {
     self->bits_acesso[quadro] = 1; // Indica que o quadro foi acessado
 }
 
-//teste
-static bool is_any_block_free(so_t *self)
-{
-  for (size_t i = 0; i < self->num_pag_fisica; i++)
-  {
-    if (!self->controle_blocos->blocos[i].em_uso)
-    {
-      return true;
-    }
-    
-  }
 
-  return false;
+static int escolhe_pagina_substituicao(so_t *self) {
+    if (self == NULL) {
+        console_printf("Erro: Sistema operacional não inicializado.\n");
+        return -1;
+    }
+
+    switch (self->algoritmo_substituicao) {
+      case ALGORITMO_FIFO:
+          return substituir_pagina_fifo(self);
+
+      case ALGORITMO_SEGUNDA_CHANCE:
+          return substituir_pagina_segunda_chance(self);
+
+      default:
+          console_printf("Erro: Algoritmo de substituição desconhecido.\n");
+          return -1;
+    }
 }
 
-static int find_free_page(so_t *self)
-{
-  for (size_t i = 0; i < self->num_pag_fisica; i++)
-  {
-    if (!self->controle_blocos->blocos[i].em_uso)
-    {
-      return i;
-    }
-  }
 
-  return -1;
+// static void so_trata_page_fault_espaco_encontrado(so_t *self, int end_causador)
+// {
+//     int free_page = controle_blocos_busca_bloco_disponivel(self->controle_blocos);
+    
+//     int end_disk_ini = processo_endereco_disco(self->processo_corrente) + end_causador - end_causador % TAM_PAGINA;
+//     int end_disk = end_disk_ini;
+//     console_printf("SO: end disk = %d", end_disk);
+
+//     int end_virt_ini = end_causador;
+//     int end_virt_fim = end_virt_ini + TAM_PAGINA - 1;
+
+//     for (int end_virt = end_virt_ini; end_virt <= end_virt_fim; end_virt++) {
+//       int dado;
+//       if (mem_le(self->mem_secundaria, end_disk, &dado) != ERR_OK) {
+//         console_printf("Erro na leitura no tratamento de page fault");
+//         return;
+//       }
+
+//       int physical_target_address = free_page*TAM_PAGINA + (end_virt - end_virt_ini);
+
+//       if (mem_escreve(self->mem, physical_target_address, dado) != ERR_OK) {
+//         console_printf("Erro na escrita no tratamento de page fault");
+//         return;
+//       }
+
+//       end_disk++;
+//     }
+
+//     self->controle_blocos->blocos[free_page].em_uso = true;
+//     self->controle_blocos->blocos[free_page].processo_pid = processo_pid(self->processo_corrente);
+//     self->controle_blocos->blocos[free_page].pagina = end_causador/TAM_PAGINA;
+    
+
+//     tabpag_t *tabela = processo_tab_pag(self->processo_corrente);
+//     tabpag_define_quadro(tabela, end_causador/TAM_PAGINA, free_page, self->controle_quadros);
+
+//     console_printf("SO: falta de página tratada - havia quadro livre");
+// }
+
+static bool copiar_pagina_disco_para_quadro(so_t *self, int endereco_disco, int quadro_destino) {
+    for (int offset = 0; offset < TAM_PAGINA; offset++) {
+        int dado;
+        if (mem_le(self->mem_secundaria, endereco_disco + offset, &dado) != ERR_OK) {
+            console_printf("Erro ao ler dado do disco\n");
+            return false;
+        }
+
+        int endereco_fisico = quadro_destino * TAM_PAGINA + offset;
+        if (mem_escreve(self->mem, endereco_fisico, dado) != ERR_OK) {
+            console_printf("Erro ao escrever dado na memória\n");
+            return false;
+        }
+    }
+    return true;
 }
 
-static void so_trata_page_fault_espaco_encontrado(so_t *self, int end_causador)
-{
-    int free_page = find_free_page(self);
-    
-    int end_disk_ini = processo_endereco_disco(self->processo_corrente) + end_causador - end_causador % TAM_PAGINA;
+static bool copiar_quadro_para_disco(so_t *self, int quadro_fonte, int endereco_disco) {
+    for (int offset = 0; offset < TAM_PAGINA; offset++) {
+        int dado;
+        int endereco_fisico = quadro_fonte * TAM_PAGINA + offset;
+
+        if (mem_le(self->mem, endereco_fisico, &dado) != ERR_OK) {
+            console_printf("Erro ao ler dado do quadro físico\n");
+            return false;
+        }
+
+        if (mem_escreve(self->mem_secundaria, endereco_disco + offset, dado) != ERR_OK) {
+            console_printf("Erro ao escrever dado no disco\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
+// Função swap_out: Salva a página vítima no disco
+static bool swap_out(so_t *self, int quadro_vitima) {
+    int pid_vitima = self->controle_blocos->blocos[quadro_vitima].processo_pid;
+    int pagina_vitima = self->controle_blocos->blocos[quadro_vitima].pagina;
+    processo_t *processo_vitima = so_busca_processo(self, pid_vitima);
+    tabpag_t *tabela_vitima = processo_tab_pag(processo_vitima);
+
+    if (tabpag_pagina_modificada(tabela_vitima, quadro_vitima)) {
+        int endereco_disco_vitima = processo_endereco_disco(processo_vitima) + (pagina_vitima * TAM_PAGINA);
+        if (endereco_disco_vitima < 0) {
+            console_printf("Erro ao calcular o endereço de disco.");
+        }
+
+        // Copiar os dados do quadro físico para o disco
+        if (!copiar_quadro_para_disco(self, quadro_vitima, endereco_disco_vitima)) {
+            console_printf("Erro ao salvar página vítima no disco");
+            return false;
+        }
+
+        console_printf("SO: página vítima salva no disco");
+    }
+
+    // Invalidar o quadro da tabela de páginas
+    tabpag_invalida_quadro(tabela_vitima, pagina_vitima, self->controle_quadros);
+    return true;
+}
+
+// Função swap_in: Carrega a página do disco para o quadro físico
+static bool swap_in(so_t *self, int quadro_destino, int end_causador) {
+    int end_disk_ini = processo_endereco_disco(self->processo_corrente) + 
+                       end_causador - (end_causador % TAM_PAGINA);
     int end_disk = end_disk_ini;
-    console_printf("SO: end disk = %d", end_disk);
 
-    int end_virt_ini = end_causador;
-    int end_virt_fim = end_virt_ini + TAM_PAGINA - 1;
-
-    for (int end_virt = end_virt_ini; end_virt <= end_virt_fim; end_virt++) {
-      int dado;
-      if (mem_le(self->mem_secundaria, end_disk, &dado) != ERR_OK) {
-        console_printf("Erro na leitura no tratamento de page fault");
-        return;
-      }
-
-      int physical_target_address = free_page*TAM_PAGINA + (end_virt - end_virt_ini);
-
-      if (mem_escreve(self->mem, physical_target_address, dado) != ERR_OK) {
-        console_printf("Erro na escrita no tratamento de page fault");
-        return;
-      }
-
-      end_disk++;
+    // Copiar os dados do disco para o quadro físico
+    if (!copiar_pagina_disco_para_quadro(self, end_disk, quadro_destino)) {
+        console_printf("Erro ao carregar página do disco no quadro físico");
+        return false;
     }
 
-    self->controle_blocos->blocos[free_page].em_uso = true;
-    self->controle_blocos->blocos[free_page].processo_pid = processo_pid(self->processo_corrente);
-    self->controle_blocos->blocos[free_page].pagina = end_causador/TAM_PAGINA;
-    
+    // Atualizar a tabela de blocos e a tabela de páginas
+    self->controle_blocos->blocos[quadro_destino].em_uso = true;
+    self->controle_blocos->blocos[quadro_destino].processo_pid = processo_pid(self->processo_corrente);
+    self->controle_blocos->blocos[quadro_destino].pagina = end_causador / TAM_PAGINA;
 
-    tabpag_t *tabela = processo_tab_pag(self->processo_corrente);
-    tabpag_define_quadro(tabela, end_causador/TAM_PAGINA, free_page, self->controle_quadros);
+    tabpag_define_quadro(processo_tab_pag(self->processo_corrente), 
+                         end_causador / TAM_PAGINA, quadro_destino, 
+                         self->controle_quadros);
+
+    console_printf("SO: página carregada no quadro físico");
+    return true;
+}
+
+// Função de tratamento de page fault com substituição
+static void so_trata_page_fault_com_substituicao(so_t *self, int end_causador, int quadro_vitima) {
+    if (!swap_out(self, quadro_vitima)) {
+        self->erro_interno = true;
+        return;
+    }
+
+    if (!swap_in(self, quadro_vitima, end_causador)) {
+        self->erro_interno = true;
+        return;
+    }
+
+    console_printf("SO: falta de página tratada com substituição");
+}
+
+// Função de tratamento de page fault quando há espaço livre
+static void so_trata_page_fault_espaco_encontrado(so_t *self, int end_causador) {
+    int bloco_disponivel = controle_blocos_busca_bloco_disponivel(self->controle_blocos);
+
+    if (!swap_in(self, bloco_disponivel, end_causador)) {
+        self->erro_interno = true;
+        return;
+    }
 
     console_printf("SO: falta de página tratada - havia quadro livre");
 }
 
-static void so_trata_page_fault(so_t *self)
-{
-  int end_causador = processo_complemento(self->processo_corrente);
-  console_printf("SO: endereço causador do page fault = %d", end_causador);
 
-  bool has_free_block = is_any_block_free(self);
-  if(has_free_block)
-  {
-    so_trata_page_fault_espaco_encontrado(self, end_causador);
-  }
+// Atualização da função principal de tratamento de page fault
+static void so_trata_page_fault(so_t *self) {
+    int end_causador = processo_complemento(self->processo_corrente);
+    console_printf("SO: endereço causador do page fault = %d", end_causador);
 
-  else
-  {
-    console_printf("SO: memória principal cheia");
-    console_printf("SO: remoção de página para swap não implementada");
-    self->erro_interno = true;
-  }
+    int tempo_disponivel = mem_tempo_disponivel(self->mem_secundaria);
+
+    if (tempo_disponivel > self->tempo_relogio_atual) {
+        // O disco está ocupado; bloquear o processo até que esteja disponível
+        so_bloqueia_processo(
+            self,
+            self->processo_corrente,
+            ESPERA_PAGINA,
+            tempo_disponivel - self->tempo_relogio_atual
+        );
+        console_printf("SO: processo %d bloqueado aguardando disco.\n", 
+            processo_pid(self->processo_corrente));
+        return;
+    }
+
+    if (controle_blocos_bloco_disponivel(self->controle_blocos)) {
+        so_trata_page_fault_espaco_encontrado(self, end_causador);
+    } else {
+        console_printf("SO: memória principal cheia");
+        int vitima = escolhe_pagina_substituicao(self);
+
+        if (vitima == -1) {
+            console_printf("SO: erro ao escolher página vítima");
+            self->erro_interno = true;
+            return;
+        }
+
+        console_printf("SO: página vítima escolhida = %d", vitima);
+        so_trata_page_fault_com_substituicao(self, end_causador, vitima);
+    }
 }
+
+
+
 
 
 //@TODO - colocar os erros q tem no readme -- soh tem dois acessos ao disco - memoria principal - alem dos registradores - toda falha de pagina gera pelo menos dois acessos ao disco
@@ -1384,7 +1471,7 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
   int end_virt_ini = 0;
   int end_virt_fim = end_virt_ini + prog_tamanho(programa) - 1;
 
-  self->ponteiro_disco = end_virt_fim + 1;
+  self->ponteiro_disco = end_disco_ini + end_virt_fim + 1;
 
   for (int end_virt = end_virt_ini; end_virt <= end_virt_fim; end_virt++) {
 
@@ -1394,7 +1481,7 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
     }
     end_disco++;
   }
-  return end_virt_ini;
+  return end_disco_ini;
 
 }
 //brizzgui
@@ -1470,10 +1557,7 @@ static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
   if (processo == NULL) return false;
   for (int indice_str = 0; indice_str < tam; indice_str++) {
     int caractere;
-    // não tem memória virtual implementada, posso usar a mmu para traduzir
-    //   os endereços e acessar a memória
     if (mmu_le(self->mmu, end_virt + indice_str, &caractere, usuario) != ERR_OK) {
-      // se não está na memória principal, busca na memória secundária (disco)
       console_printf("Erro ao ler o endereço virtual %d do processo %d\n", end_virt + indice_str, processo_pid(processo));
       mem_le(self->mem_secundaria, processo_endereco_disco(self->processo_corrente) + end_virt + indice_str, &caractere);
     }

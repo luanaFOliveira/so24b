@@ -173,6 +173,14 @@ int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico) {
     return -1; 
 }
 
+void tabpag_invalida_quadro(tabpag_t *self, int quadro, controle_quadros_t *controle_quadros) {
+    int pagina = tabpag_encontra_pagina(self, quadro); 
+    if (pagina != -1) {
+        tabpag_invalida_pagina(self, pagina, controle_quadros);
+    }
+}
+
+
 //getters
 
 int tabpag__pagina_quadro(tabpag_t *self, int pagina)
