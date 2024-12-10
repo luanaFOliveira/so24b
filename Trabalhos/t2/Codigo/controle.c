@@ -55,6 +55,7 @@ void controle_laco(controle_t *self)
       // o dispositivo 3 do relógio contém 1 se o timer expirou
       int tem_int;
       relogio_leitura(self->relogio, 3, &tem_int);
+      console_printf("tem_int: %d\n", tem_int);
       if (tem_int != 0) {
         cpu_interrompe(self->cpu, IRQ_RELOGIO);
       }

@@ -27,7 +27,7 @@
 #define MAX_PROCESSOS 16 // numero máximo de processos
 #define QUANTUM 5
 #define NUM_TERMINAIS 4
-#define TIPO_ESCALONADOR SIMPLES
+#define TIPO_ESCALONADOR CIRCULAR
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
 #define TOTAL_QUADROS 1024 // Número total de quadros na memória física
@@ -375,6 +375,7 @@ static void so_escalona(so_t *self)
 static int so_despacha(so_t *self)
 {
   console_printf("SO: dentro de so despacha");
+    mem_escreve(self->mem, IRQ_END_erro, ERR_OK);
 
   if(self->erro_interno) return 1;
 
@@ -392,7 +393,6 @@ static int so_despacha(so_t *self)
     mem_escreve(self->mem, IRQ_END_A, a);
     mem_escreve(self->mem, IRQ_END_X, x);
     mem_escreve(self->mem, IRQ_END_complemento, complemento);
-    mem_escreve(self->mem, IRQ_END_erro, ERR_OK);
     console_printf("SO: dentro de so despacha - escreveu na memoria em PC- %d, A-%d, X-%d, complemento-%d", pc, a, x, complemento);
 
      // Configura a tabela de páginas da MMU
@@ -404,6 +404,7 @@ static int so_despacha(so_t *self)
     console_printf("Espero ler instrução do quadro físico %d, traduzido da página virtual %d", q, pc/TAM_PAGINA);
     console_printf("Erro foi: %d. ERR_OK é %d", err, ERR_OK);
     console_printf("Processo = #%d", processo_pid(processo));
+     mem_escreve(self->mem, IRQ_END_erro, ERR_OK);
     return 0; 
   } else {
     return 1; 
@@ -528,7 +529,7 @@ static void so_trata_irq_desconhecida(so_t *self, int irq);
 static void so_trata_irq(so_t *self, int irq)
 {
   // verifica o tipo de interrupção que está acontecendo, e atende de acordo
-  console_printf("SO: entrou em trata irq");
+  console_printf("SO: entrou em trata irq irq=%d", irq);
   switch (irq) {
     case IRQ_RESET:
       so_trata_irq_reset(self);
@@ -568,10 +569,10 @@ static void so_trata_irq_reset(so_t *self)
     return;
   }
 
-
+  self->processo_corrente = processo;
 
   // altera o PC para o endereço de carga (deve ter sido o endereço virtual 0)
-  mem_escreve(self->mem, IRQ_END_PC, ender);
+  mem_escreve(self->mem, IRQ_END_PC, processo_PC(self->processo_corrente));
   // passa o processador para modo usuário
   mem_escreve(self->mem, IRQ_END_modo, usuario);
 }
@@ -579,7 +580,7 @@ static void so_trata_irq_reset(so_t *self)
 // interrupção gerada quando a CPU identifica um erro
 static void so_trata_irq_err_cpu(so_t *self)
 {
-  
+  console_printf("SO: tratando erro na CPU");
   err_t erro = processo_erro(self->processo_corrente);
   if(erro == ERR_PAG_AUSENTE){
     console_printf("SO: tratando falha de pagina vindo da cpu");
@@ -723,7 +724,9 @@ static void so_chamada_cria_proc(so_t *self)
   if(processo == NULL) return;
   int ender_proc = processo_X(processo);
   char nome[100];
-  if (so_copia_str_do_processo(self,100, nome, ender_proc, processo)) {
+  if (so_copia_str_do_processo(self, 100, nome, ender_proc, processo)) {
+    console_printf("SO: endereço do programa %d", ender_proc);
+    console_printf("SO: carreguei %s", nome);
     processo_t *processo_alvo = so_gera_processo(self, nome);
     console_printf("Processo alvo %d criado.", processo_pid(processo_alvo));
     if(processo_alvo != NULL)
@@ -821,12 +824,17 @@ static processo_t *so_busca_processo(so_t *self,int pid){
 //@TODO = ver como alterar isso agora que so_carrega_programa recebe um processo, mas aqui o processo nao esta gerado ainda
 static processo_t *so_gera_processo(so_t *self, char *programa) {
     console_printf("gerando processos");
-    int end = so_carrega_programa(self, NULL ,programa);
+
+    
+    processo_t *processo = processo_cria(self->num_processos + 1);
+    int end = so_carrega_programa(self, processo ,programa);
+    processo_set_pc(processo, end);
 
 
     if (end < 0) {
         return NULL;
     }
+
     if (self->num_processos == self->tamanho_tabela_processos) {
       console_printf("Aumentando tamanho da tabela de processos");
       self->tamanho_tabela_processos = self->tamanho_tabela_processos *2;
@@ -835,8 +843,6 @@ static processo_t *so_gera_processo(so_t *self, char *programa) {
         return NULL;
       }
     }
-
-    processo_t *processo = processo_cria(self->num_processos + 1, end);
     self->tabela_processos[self->num_processos++] = processo;
     escalonador_adiciona_processo(self->escalonador, processo);
     self->num_processos_criados++;
@@ -1136,6 +1142,8 @@ static void so_trata_page_fault_espaco_encontrado(so_t *self, int end_causador)
 
     self->controle_blocos->blocos[free_page].em_uso = true;
     self->controle_blocos->blocos[free_page].processo_pid = processo_pid(self->processo_corrente);
+    self->controle_blocos->blocos[free_page].pagina = end_causador/TAM_PAGINA;
+    
 
     tabpag_t *tabela = processo_tab_pag(self->processo_corrente);
     tabpag_define_quadro(tabela, end_causador/TAM_PAGINA, free_page, self->controle_quadros);
@@ -1457,60 +1465,28 @@ static int so_carrega_programa_na_memoria_virtual(so_t *self,
 // T2: Com memória virtual, cada valor do espaço de endereçamento do processo
 //   pode estar em memória principal ou secundária (e tem que achar onde)
 static bool so_copia_str_do_processo(so_t *self, int tam, char str[tam],
-                                     int end_virt, processo_t *processo) {
-    console_printf("entrou no so copiia str do processo\n");
-
-    if (processo == NULL) return false;
-
-    for (int indice_str = 0; indice_str < tam; indice_str++) {
-        int caractere;
-
-        // Calcular página virtual e offset
-        int pagina_virt = (end_virt + indice_str) / TAM_PAGINA;
-        int offset = (end_virt + indice_str) % TAM_PAGINA;
-
-        // Tentar traduzir o endereço virtual para quadro físico
-        int quadro_fisico;
-        err_t status = tabpag_traduz(processo_tab_pag(processo), pagina_virt, &quadro_fisico);
-
-        if (status == ERR_PAG_AUSENTE) {
-            // Página ausente, tratar falta de página
-            so_trata_page_fault(self);
-            // Tentar traduzir novamente
-            status = tabpag_traduz(processo_tab_pag(processo), pagina_virt, &quadro_fisico);
-            if (status != ERR_OK) {
-                console_printf("Erro ao tentar traduzir a página após page fault.\n");
-                return false; // Falha na tradução após tratamento
-            }
-        }
-
-        // Calcular endereço físico
-        int end_fis = quadro_fisico * TAM_PAGINA + offset;
-
-        // Ler caractere da memória principal
-        if (mem_le(self->mem, end_fis, &caractere) != ERR_OK) {
-            console_printf("Erro ao ler da memória física no endereço %d.\n", end_fis);
-            return false; // Falha na leitura da memória
-        }
-
-        // Verificar validade do caractere
-        if (caractere < 0 || caractere > 255) {
-            console_printf("Caractere inválido: %d\n", caractere);
-            return false;
-        }
-
-        // Copiar caractere para o vetor
-        str[indice_str] = caractere;
-
-        // Terminar cópia ao encontrar caractere nulo
-        if (caractere == 0) {
-            return true;
-        }
+                                     int end_virt, processo_t *processo)
+{
+  if (processo == NULL) return false;
+  for (int indice_str = 0; indice_str < tam; indice_str++) {
+    int caractere;
+    // não tem memória virtual implementada, posso usar a mmu para traduzir
+    //   os endereços e acessar a memória
+    if (mmu_le(self->mmu, end_virt + indice_str, &caractere, usuario) != ERR_OK) {
+      // se não está na memória principal, busca na memória secundária (disco)
+      console_printf("Erro ao ler o endereço virtual %d do processo %d\n", end_virt + indice_str, processo_pid(processo));
+      mem_le(self->mem_secundaria, processo_endereco_disco(self->processo_corrente) + end_virt + indice_str, &caractere);
     }
-
-    // Estouro do tamanho do vetor
-    console_printf("Estouro de tamanho do vetor ao copiar string.\n");
-    return false;
+    if (caractere < 0 || caractere > 255) {
+      return false;
+    }
+    str[indice_str] = caractere;
+    if (caractere == 0) {
+      return true;
+    }
+  }
+  // estourou o tamanho de str
+  return false;
 }
 
 

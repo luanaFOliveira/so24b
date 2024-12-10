@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "processo.h"
+#include "console.h"
 
 struct processo_t {
     processo_estado_t estado;
@@ -26,7 +27,7 @@ struct processo_t {
 };
 
 
-processo_t *processo_cria(int id, int pc) {
+processo_t *processo_cria(int id) {
     processo_t *self = malloc(sizeof(*self));
     if (self == NULL) return NULL;
     self->estado = PRONTO;
@@ -34,7 +35,6 @@ processo_t *processo_cria(int id, int pc) {
     self->tipo_bloqueio = -1;
     self->pid = id;
 
-    self->PC = pc;
     self->A = 0;
     self->X = 0;
     self->complemento = 0;
@@ -114,6 +114,12 @@ int processo_complemento(processo_t *processo){
     return processo->complemento;
 }
 
+void processo_set_pc(processo_t *processo, int pc){
+    if (processo == NULL)
+        exit(1);
+    processo->PC = pc;
+}
+
 err_t processo_erro(processo_t *processo){
     if (processo == NULL)
         exit(1);
@@ -123,6 +129,7 @@ err_t processo_erro(processo_t *processo){
 int processo_endereco_disco(processo_t *processo){
     if (processo == NULL)
         exit(1);
+    console_printf("Endereco disco: %d", processo->endereco_disco);
     return processo->endereco_disco;
 }
 

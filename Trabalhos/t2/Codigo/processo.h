@@ -23,8 +23,9 @@ typedef enum {
 } bloqueio_motivo_t;
 
 
-processo_t *processo_cria(int id, int pc);
+processo_t *processo_cria(int id);
 void processo_destroi(processo_t *self, mmu_t *mmu, controle_quadros_t *controle_quadros);
+void processo_set_pc(processo_t *processo, int pc);
 
 // Getters
 int processo_pid(processo_t *processo);

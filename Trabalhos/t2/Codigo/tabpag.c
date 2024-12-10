@@ -4,6 +4,7 @@
 // so24b
 
 #include "tabpag.h"
+#include "console.h"
 #include <stdlib.h>
 #include <assert.h>
 
@@ -54,7 +55,8 @@ void tabpag_destroi(tabpag_t *self, controle_quadros_t *controle_quadros)
 
 // retorna true se a página for válida (pode ser traduzida em um quadro)
 bool tabpag__pagina_valida(tabpag_t *self, int pagina)
-{
+{ 
+  console_printf("pagina: %d tamanho tabela: %d\n", pagina, self->tam_tab);
   if (pagina < 0 || pagina >= self->tam_tab) return false;
   return self->tabela[pagina].valida;
 }
@@ -149,6 +151,7 @@ err_t tabpag_traduz(tabpag_t *self, int pagina, int *pquadro)
 {
   if (!tabpag__pagina_valida(self, pagina)) return ERR_PAG_AUSENTE;
   *pquadro = self->tabela[pagina].quadro;
+
   return ERR_OK;
 }
 

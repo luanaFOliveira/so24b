@@ -4,6 +4,7 @@
 // so24b
 
 #include "mmu.h"
+#include "console.h"
 #include <stdlib.h>
 #include <assert.h>
 
@@ -76,6 +77,8 @@ err_t mmu_escreve(mmu_t *self, int endvirt, int valor, cpu_modo_t modo)
   // em modo supervisor ou se não tiver tabela de páginas,
   //   não faz tradução de endereços, nem marca o acesso
   if (modo == supervisor || self->tabpag == NULL) {
+    console_printf("modo e tabela  valores %d %d\n", modo, self->tabpag);
+    console_printf("escrevendo na memoria\n endvirt: %d\n valor: %d\n", endvirt, valor);
     return mem_escreve(self->mem, endvirt, valor);
   }
   int endfis;
