@@ -53,7 +53,7 @@ void tabpag_destroi(tabpag_t *self, controle_quadros_t *controle_quadros)
 }
 
 // retorna true se a página for válida (pode ser traduzida em um quadro)
-static bool tabpag__pagina_valida(tabpag_t *self, int pagina)
+bool tabpag__pagina_valida(tabpag_t *self, int pagina)
 {
   if (pagina < 0 || pagina >= self->tam_tab) return false;
   return self->tabela[pagina].valida;
@@ -168,4 +168,12 @@ int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico) {
         }
     }
     return -1; 
+}
+
+//getters
+
+int tabpag__pagina_quadro(tabpag_t *self, int pagina)
+{
+  if (pagina < 0 || pagina >= self->tam_tab) return -1;
+  return self->tabela[pagina].quadro;
 }

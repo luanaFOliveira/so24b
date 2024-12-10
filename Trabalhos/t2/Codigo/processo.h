@@ -2,6 +2,7 @@
 #define PROCESSO_H
 #include "tabpag.h"
 #include "mmu.h"
+#include "err.h"
 
 typedef struct processo_t processo_t;
 
@@ -34,6 +35,9 @@ int processo_es_id(processo_t *processo);
 int processo_PC(processo_t *processo);
 int processo_A(processo_t *processo);
 int processo_X(processo_t *processo);
+int processo_complemento(processo_t *processo);
+int processo_endereco_disco(processo_t *processo);
+err_t processo_erro(processo_t *processo);
 double processo_prioridade(processo_t *processo);
 float processo_tempo_retorno(processo_t *processo);
 int processo_num_preempcoes(processo_t *processo);
@@ -48,6 +52,9 @@ void processo_set_es_id(processo_t *processo, int es_id);
 void processo_set_PC(processo_t *processo, int pc);
 void processo_set_A(processo_t *processo, int a);
 void processo_set_X(processo_t *processo, int x);
+void processo_set_complemento(processo_t *processo, int complemento);
+void processo_set_erro(processo_t *processo, err_t erro);
+void processo_set_endereco_disco(processo_t *processo, int ender_disco);
 void processo_set_prioridade(processo_t *processo, double prioridade);
 void processo_set_estado(processo_t *processo,processo_estado_t estado);
 

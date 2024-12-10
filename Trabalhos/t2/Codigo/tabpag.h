@@ -64,4 +64,7 @@ err_t tabpag_traduz(tabpag_t *self, int pagina, int *pquadro);
 
 int tabpag_encontra_pagina(tabpag_t *self, int quadro_fisico);
 int tabpag_pagina_modificada(tabpag_t *self, int quadro_fisico);
+
+int tabpag__pagina_quadro(tabpag_t *self, int pagina);
+bool tabpag__pagina_valida(tabpag_t *self, int pagina);
 #endif // TABPAG_H

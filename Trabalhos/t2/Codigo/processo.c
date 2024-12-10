@@ -7,7 +7,8 @@ struct processo_t {
     int pid;
     double prioridade;
     bloqueio_motivo_t motivo_bloqueio;
-    int tipo_bloqueio, es_id, PC, X, A;
+    int tipo_bloqueio, es_id, PC, X, A, complemento;
+    err_t erro;
 
     //metricas
     float tempo_retorno;
@@ -20,6 +21,8 @@ struct processo_t {
 
     tabpag_t *tab_pag;
 
+    int endereco_disco;
+
 };
 
 
@@ -30,9 +33,13 @@ processo_t *processo_cria(int id, int pc) {
     self->motivo_bloqueio = SEM_MOTIVO;
     self->tipo_bloqueio = -1;
     self->pid = id;
+
     self->PC = pc;
     self->A = 0;
     self->X = 0;
+    self->complemento = 0;
+    self->erro = 0;
+
     self->es_id = -1;
     self->prioridade = 0.5;   
 
@@ -99,6 +106,24 @@ int processo_X(processo_t *processo){
     if (processo == NULL)
         exit(1);
     return processo->X;
+}
+
+int processo_complemento(processo_t *processo){
+    if (processo == NULL)
+        exit(1);
+    return processo->complemento;
+}
+
+err_t processo_erro(processo_t *processo){
+    if (processo == NULL)
+        exit(1);
+    return processo->erro;
+}
+
+int processo_endereco_disco(processo_t *processo){
+    if (processo == NULL)
+        exit(1);
+    return processo->endereco_disco;
 }
 
 double processo_prioridade(processo_t *processo){
@@ -186,6 +211,24 @@ void processo_set_X(processo_t *processo, int x){
     processo->X = x;
 }
 
+void processo_set_complemento(processo_t *processo, int complemento){
+    if (processo == NULL)
+        exit(1);
+    processo->complemento = complemento;
+}
+
+void processo_set_erro(processo_t *processo, err_t erro){
+    if (processo == NULL)
+        exit(1);
+    processo->erro = erro;
+}
+
+void processo_set_endereco_disco(processo_t *processo, int ender_disco){
+    if (processo == NULL)
+        exit(1);
+    processo->endereco_disco = ender_disco;
+}
+
 void processo_set_prioridade(processo_t *processo,double prioridade){
     if (processo == NULL)
         exit(1);
@@ -211,7 +254,7 @@ void processo_destroi(processo_t *self, mmu_t *mmu,controle_quadros_t *controle_
     if (self == NULL)
         exit(1);
     tabpag_destroi(self->tab_pag, controle_quadros);
-    mmu_define_tabpag(mmu, NULL);   
+    //mmu_define_tabpag(mmu, NULL);   
     free(self);
 }
 
@@ -256,7 +299,7 @@ void processo_executa(processo_t *processo, mmu_t *mmu) {
         processo_set_estado(processo, EM_EXECUCAO);
         //processo->estado = EM_EXECUCAO;
     } 
-    mmu_define_tabpag(mmu, processo->tab_pag);
+    //mmu_define_tabpag(mmu, processo->tab_pag);
 }
 
 void processo_encerra(processo_t *processo) {
