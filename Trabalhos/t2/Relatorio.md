@@ -18,9 +18,13 @@ Os processos ficam armazenados em disco, na memoria secundaria, e a memoria prin
 
 Uma função essencial para esse trabalho foi o tratamento para a interrupção de falta da pagina gerada pela CPU. Foi feita uma funcao, que quando tem essa interrupcao é chamada e nela pode acontecer dois casos, o primeiro sendo se tem blocos na memoria secundaria disponivel, entao chama uma funcao para isso e caso nao tenha eh chamado os algoritmos de substituicao para retornarem uma pagina para ser substituida. Alem disso nessa funcao é feito o bloqueio do processo quando o disco nao esta livre, para que o processo espere ate que possa acessar o disco.
 
+Foram criadas duas estruturas para controlar as memorias, o controle de quadros para controlar os quadros da memoria principal e o controle de blocos para controlar os blocos do disco, elas armazenam informacoes basicas para indicar se foi usado o espaco e quem usou o espaco em memoria
+
 ## Testes de desempenho
 
-Os testes foram feitos alterando o tipo de escalonador para analisar algumas metricas, para todos os testes foram usados um quantum igual a 5
+Os testes foram feitos alterando o tipo de escalonador para analisar algumas metricas
+
+Para todos os testes foi usado um Quantum de 10, o Intervalo de Interrupcoes de 100, o tempo de transferencia apenas para simular foi de 1 e o tamanho da pagina foi de 3
 
 ### Escalonador Simples
 
