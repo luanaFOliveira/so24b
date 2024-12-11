@@ -58,12 +58,12 @@ void processo_set_erro(processo_t *processo, err_t erro);
 void processo_set_endereco_disco(processo_t *processo, int ender_disco);
 void processo_set_prioridade(processo_t *processo, double prioridade);
 void processo_set_estado(processo_t *processo,processo_estado_t estado);
-
+void processo_set_tipo_bloqueio(processo_t *processo,int tipo);
 void processo_muda_estado(processo_t *processo, processo_estado_t estado);
 void processo_bloqueia(processo_t *processo, bloqueio_motivo_t motivo_bloqueio, int tipo_bloqueio);
 void processo_desbloqueia(processo_t *processo);
 void processo_para(processo_t *processo);
-void processo_executa(processo_t *processo;
+void processo_executa(processo_t *processo);
 void processo_encerra(processo_t *processo);
 void processo_libera_es(processo_t *processo);
 void atualiza_prioridade(processo_t *processo);

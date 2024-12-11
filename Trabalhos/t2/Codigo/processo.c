@@ -242,6 +242,12 @@ void processo_set_prioridade(processo_t *processo,double prioridade){
     processo->prioridade = prioridade;
 }
 
+void processo_set_tipo_bloqueio(processo_t *processo,int tipo){
+    if (processo == NULL)
+        exit(1);
+    processo->tipo_bloqueio = tipo;
+}
+
 void processo_set_estado(processo_t *processo,processo_estado_t estado){
     if (processo == NULL)
         exit(1);

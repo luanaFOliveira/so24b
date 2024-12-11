@@ -216,10 +216,10 @@ void so_destroi(so_t *self)
 {
   so_imprime_metricas(self);
   cpu_define_chamaC(self->cpu, NULL, NULL);
-  escalonador_destroi(self->escalonador,self->mmu, self->controle_quadros);
+  escalonador_destroi(self->escalonador, self->controle_quadros);
   destroi_controle_es(self->controle_es);
   for (int i = 0; i < self->num_processos; i++) {
-    processo_destroi(self->tabela_processos[i],self->mmu,self->controle_quadros);
+    processo_destroi(self->tabela_processos[i],self->controle_quadros);
 
   }
   free(self->tabela_processos);
@@ -1043,8 +1043,52 @@ static int escolhe_pagina_substituicao(so_t *self) {
     }
 }
 
+static bool disco_disponivel(so_t *self, int tempo_pedido)
+{
+  int tempo_atual;
+  if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
+      console_printf("SO: erro ao ler o relógio\n");
+      return false;
+  }
+
+
+  if (tempo_atual >= self->tempo_disco_livre)
+  {
+    // Disco está livre, atualiza próximo horário livre
+    self->tempo_disco_livre = tempo_atual + tempo_pedido;
+    return true;
+  }
+  else
+  {
+    // Disco ocupado, soma o tempo pedido ao tempo que já vai levar
+    self->tempo_disco_livre += tempo_pedido;
+    return false;
+  }
+}
+
+void bloqueia_por_espera_disco(so_t *self)
+{
+  if (!disco_disponivel(self, TEMPO_TRANSFERENCIA))
+  {
+    int tempo_bloqueio = TEMPO_TRANSFERENCIA + self->tempo_disco_livre;
+    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, tempo_bloqueio);
+    return;
+  }
+  else
+  {
+    int tempo_atual;
+    if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
+        console_printf("SO: erro ao ler o relógio\n");
+        return;
+    }
+    int tempo_bloqueio = TEMPO_TRANSFERENCIA + tempo_atual;
+    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, tempo_bloqueio);
+  }
+}
+
 
 static bool copiar_pagina_disco_para_quadro(so_t *self, int endereco_disco, int quadro_destino) {
+    
     for (int offset = 0; offset < TAM_PAGINA; offset++) {
         int dado;
         if (mem_le(self->mem_secundaria, endereco_disco + offset, &dado) != ERR_OK) {
@@ -1065,7 +1109,8 @@ static bool copiar_quadro_para_disco(so_t *self, int quadro_fonte, int endereco_
     for (int offset = 0; offset < TAM_PAGINA; offset++) {
         int dado;
         int endereco_fisico = quadro_fonte * TAM_PAGINA + offset;
-
+        int tipo_bloqueio = processo_tipo_bloqueio(self->processo_corrente);
+        processo_set_tipo_bloqueio(self->processo_corrente, tipo_bloqueio + TEMPO_TRANSFERENCIA);
         if (mem_le(self->mem, endereco_fisico, &dado) != ERR_OK) {
             console_printf("Erro ao ler dado do quadro físico\n");
             return false;
@@ -1155,6 +1200,9 @@ static void so_trata_page_fault_bloco_disponivel(so_t *self, int end_causador) {
 }
 
 
+
+
+
 static void so_trata_page_fault(so_t *self) {
     int end_causador = processo_complemento(self->processo_corrente);
     console_printf("SO: endereço causador do page fault = %d", end_causador);
@@ -1189,25 +1237,27 @@ static void so_trata_page_fault(so_t *self) {
     //   );
     //   so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA,tempo_atual+TEMPO_TRANSFERENCIA);
     // }
-    int tempo_atual;
-    if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
-        console_printf("SO: erro ao ler o relógio\n");
-        return;
-    }
+    // int tempo_atual;
+    // if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
+    //     console_printf("SO: erro ao ler o relógio\n");
+    //     return;
+    // }
 
-    if (tempo_atual < self->tempo_disco_livre) {
-        self->tempo_disco_livre += TEMPO_TRANSFERENCIA;
-    } else {
-        self->tempo_disco_livre = tempo_atual + TEMPO_TRANSFERENCIA;
-    }
+    // if (tempo_atual > self->tempo_disco_livre) {
+    //   console_printf(
+    //       "SO: processo %d - bloqueia para espera de disco até %d\n",
+    //       processo_pid(self->processo_corrente),
+    //       tempo_atual + TEMPO_TRANSFERENCIA
+    //   );
 
-    console_printf(
-        "SO: processo %d - bloqueia para espera de disco (%d)\n",
-        processo_pid(self->processo_corrente),
-        self->tempo_disco_livre
-    );
-
-    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, self->tempo_disco_livre);
+    //   // Bloqueia o processo até o tempo de espera
+    //   self->tempo_disco_livre = tempo_atual + TEMPO_TRANSFERENCIA;
+    //   so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, self->tempo_disco_livre);
+    // } else {
+    //     // Caso o tempo atual seja menor que o tempo de disco livre, o processo já está esperando
+    //     // Não é necessário bloquear novamente, apenas adiar o tempo de espera
+    //     self->tempo_disco_livre += TEMPO_TRANSFERENCIA;
+    // }
 }
 
 
