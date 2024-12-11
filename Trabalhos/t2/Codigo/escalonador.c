@@ -27,13 +27,13 @@ escalonador_t *escalonador_cria(escalonador_tipo_t tipo_escalonador) {
     return self;
 }
 
-void escalonador_destroi(escalonador_t *self, mmu_t *mmu,controle_quadros_t *controle_quadros) {
+void escalonador_destroi(escalonador_t *self,controle_quadros_t *controle_quadros) {
     if (self == NULL) return;
 
     no_t *p = self->inicio;
     while (p != NULL) {
         no_t *t = p->prox;
-        processo_destroi(p->processo, mmu, controle_quadros);
+        processo_destroi(p->processo, controle_quadros);
         free(p);
         if (t == self->inicio) break;
         p = t;

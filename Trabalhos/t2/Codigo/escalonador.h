@@ -16,7 +16,7 @@ typedef enum {
 
 escalonador_t *escalonador_cria(escalonador_tipo_t tipo_escalonador);
 
-void escalonador_destroi(escalonador_t *self, mmu_t *mmu,controle_quadros_t *controle_quadros);
+void escalonador_destroi(escalonador_t *self,controle_quadros_t *controle_quadros);
 
 void escalonador_adiciona_processo(escalonador_t *self, processo_t *processo);
 

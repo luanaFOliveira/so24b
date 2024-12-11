@@ -24,7 +24,7 @@ typedef enum {
 
 
 processo_t *processo_cria(int id);
-void processo_destroi(processo_t *self, mmu_t *mmu, controle_quadros_t *controle_quadros);
+void processo_destroi(processo_t *self, controle_quadros_t *controle_quadros);
 void processo_set_pc(processo_t *processo, int pc);
 
 // Getters
@@ -63,7 +63,7 @@ void processo_muda_estado(processo_t *processo, processo_estado_t estado);
 void processo_bloqueia(processo_t *processo, bloqueio_motivo_t motivo_bloqueio, int tipo_bloqueio);
 void processo_desbloqueia(processo_t *processo);
 void processo_para(processo_t *processo);
-void processo_executa(processo_t *processo, mmu_t *mmu);
+void processo_executa(processo_t *processo;
 void processo_encerra(processo_t *processo);
 void processo_libera_es(processo_t *processo);
 void atualiza_prioridade(processo_t *processo);
