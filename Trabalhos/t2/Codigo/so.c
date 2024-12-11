@@ -23,16 +23,16 @@
 #include <string.h>
 // CONSTANTES E TIPOS {{{1
 // intervalo entre interrupções do relógio
-#define INTERVALO_INTERRUPCAO 50   // em instruções executadas
+#define INTERVALO_INTERRUPCAO 100   // em instruções executadas
 #define MAX_PROCESSOS 16 // numero máximo de processos
-#define QUANTUM 5
+#define QUANTUM 10
 #define NUM_TERMINAIS 4
-#define TIPO_ESCALONADOR CIRCULAR
+#define TIPO_ESCALONADOR PRIORIDADE
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
-#define TOTAL_QUADROS 1024 // Número total de quadros na memória física
-#define TAMANHO_MEM_SECUNDARIA 10000
-#define TEMPO_TRANSFERENCIA 5
+#define TOTAL_QUADROS 20 // Número total de quadros na memória física
+#define TAMANHO_MEM_SECUNDARIA 60000
+#define TEMPO_TRANSFERENCIA 1
 
 // Não tem processos nem memória virtual, mas é preciso usar a paginação,
 //   pelo menos para implementar relocação, já que os programas estão sendo
@@ -339,10 +339,8 @@ static double so_calcula_prioridade_processo(so_t *self, processo_t *processo){
 
 static void so_calcula_mudanca_estado_processo(so_t *self, processo_t *processo){
     
-    if(processo_estado(processo) == EM_EXECUCAO){
-        double prioridade_nova = so_calcula_prioridade_processo(self, processo);
-        processo_set_prioridade(processo, prioridade_nova);
-    }
+    double prioridade_nova = so_calcula_prioridade_processo(self, processo);
+    processo_set_prioridade(processo, prioridade_nova);
 }
 
 static void so_escalona(so_t *self)
@@ -359,14 +357,15 @@ static void so_escalona(so_t *self)
 
   if(self->processo_corrente != NULL && processo_estado(self->processo_corrente) == EM_EXECUCAO){
     escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
-    //console_printf("SO: escalonador adicionou processo, %d", processo_pid(self->processo_corrente));
+    console_printf("SO: escalonador adicionou processo, %d", processo_pid(self->processo_corrente));
   }
 
   processo_t *processo = escalonador_proximo(self->escalonador);
+  console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
   if(processo != NULL);
   else console_printf("SO: nenhum processo para escalonar");
 
-  //console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
+  console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
   so_executa_processo(self,processo);
   //console_printf("SO: voltou do executa processo");
 }
@@ -401,10 +400,9 @@ static int so_despacha(so_t *self)
 
     int q;
     int err = tabpag_traduz(tab_pag, pc/TAM_PAGINA, &q);
-    console_printf("Espero ler instrução do quadro físico %d, traduzido da página virtual %d", q, pc/TAM_PAGINA);
+    console_printf("   %d, traduzido da página virtual %d", q, pc/TAM_PAGINA);
     console_printf("Erro foi: %d. ERR_OK é %d", err, ERR_OK);
     console_printf("Processo = #%d", processo_pid(processo));
-     mem_escreve(self->mem, IRQ_END_erro, ERR_OK);
     return 0; 
   } else {
     return 1; 
@@ -564,18 +562,18 @@ static void so_trata_irq_reset(so_t *self)
   // t2: deveria criar um processo, e programar a tabela de páginas dele
   console_printf("SO: dentro de irq reset antes de gerar processo");
   processo_t *processo = so_gera_processo(self, "init.maq");
-  int ender = so_carrega_programa(self, processo, "init.maq");
+    int ender = so_carrega_programa(self, processo, "init.maq");
   if (ender != 0) {
     console_printf("SO: problema na carga do programa inicial");
     self->erro_interno = true;
     return;
   }
 
+
   self->processo_corrente = processo;
 
   // altera o PC para o endereço de carga (deve ter sido o endereço virtual 0)
-  mem_escreve(self->mem, IRQ_END_PC, processo_PC(self->processo_corrente));
-  // passa o processador para modo usuário
+ mem_escreve(self->mem, IRQ_END_PC, processo_PC(self->processo_corrente));  // passa o processador para modo usuário
   mem_escreve(self->mem, IRQ_END_modo, usuario);
 }
 
@@ -825,7 +823,7 @@ static processo_t *so_busca_processo(so_t *self,int pid){
 
 //@TODO = ver como alterar isso agora que so_carrega_programa recebe um processo, mas aqui o processo nao esta gerado ainda
 static processo_t *so_gera_processo(so_t *self, char *programa) {
-    console_printf("gerando processos");
+    console_printf("gerando processos nome do programa %s", programa);
 
     
     processo_t *processo = processo_cria(self->num_processos + 1);
@@ -859,7 +857,7 @@ static void so_mata_processo(so_t *self, processo_t *processo) {
         processo_libera_es(processo);
         controle_libera_dispositivo(self->controle_es,es_id);
     }
-    //console_printf("SO: escalonador removeu processo, %d", processo_pid(processo));
+    console_printf("SO: escalonador removeu processo, %d", processo_pid(processo));
     escalonador_remove_processo(self->escalonador, processo);
     processo_encerra(processo);
 }
@@ -876,6 +874,7 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
 
         // Se o processo pausado não está morto, re-insira no escalonador
         if (processo_estado(self->processo_corrente) != MORTO) {
+            console_printf("Reinserindo processo no escalonador numero pid %d.\n", processo_pid(self->processo_corrente));
             escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
         }
     }
@@ -1191,6 +1190,7 @@ static bool swap_in(so_t *self, int quadro_destino, int end_causador) {
 
 // Função de tratamento de page fault com substituição
 static void so_trata_page_fault_com_substituicao(so_t *self, int end_causador, int quadro_vitima) {
+    console_printf("SO: substituindo página vítima = %d", quadro_vitima);
     if (!swap_out(self, quadro_vitima)) {
         self->erro_interno = true;
         return;
@@ -1207,7 +1207,7 @@ static void so_trata_page_fault_com_substituicao(so_t *self, int end_causador, i
 // Função de tratamento de page fault quando há espaço livre
 static void so_trata_page_fault_espaco_encontrado(so_t *self, int end_causador) {
     int bloco_disponivel = controle_blocos_busca_bloco_disponivel(self->controle_blocos);
-
+    console_printf("SO: bloco disponível = %d", bloco_disponivel);
     if (!swap_in(self, bloco_disponivel, end_causador)) {
         self->erro_interno = true;
         return;
@@ -1222,22 +1222,24 @@ static void so_trata_page_fault(so_t *self) {
     int end_causador = processo_complemento(self->processo_corrente);
     console_printf("SO: endereço causador do page fault = %d", end_causador);
 
-    int tempo_disponivel = mem_tempo_disponivel(self->mem_secundaria);
+    // int tempo_disponivel = mem_tempo_disponivel(self->mem_secundaria);
+    // console_printf("tempo disponivel = %d,  elogio atual = %d", tempo_disponivel, self->tempo_relogio_atual);
 
-    if (tempo_disponivel > self->tempo_relogio_atual) {
-        // O disco está ocupado; bloquear o processo até que esteja disponível
-        so_bloqueia_processo(
-            self,
-            self->processo_corrente,
-            ESPERA_PAGINA,
-            tempo_disponivel - self->tempo_relogio_atual
-        );
-        console_printf("SO: processo %d bloqueado aguardando disco.\n", 
-            processo_pid(self->processo_corrente));
-        return;
-    }
+    // if (tempo_disponivel < self->tempo_relogio_atual) {
+    //     // O disco está ocupado; bloquear o processo até que esteja disponível
+    //     so_bloqueia_processo(
+    //         self,
+    //         self->processo_corrente,
+    //         ESPERA_PAGINA,
+    //         tempo_disponivel - self->tempo_relogio_atual
+    //     );
+    //     console_printf("SO: processo %d bloqueado aguardando disco.\n", 
+    //         processo_pid(self->processo_corrente));
+    //     return;
+    // }
 
     if (controle_blocos_bloco_disponivel(self->controle_blocos)) {
+        console_printf("SO: espaço livre encontrado");
         so_trata_page_fault_espaco_encontrado(self, end_causador);
     } else {
         console_printf("SO: memória principal cheia");
@@ -1432,6 +1434,7 @@ static int so_carrega_programa(so_t *self, processo_t *processo,
     console_printf("\n\nSO: carregando2 programa na memória virtual processo \n");
     end_carga = so_carrega_programa_na_memoria_virtual(self, programa, processo);
     processo_set_endereco_disco(processo, end_carga);
+    end_carga = 0;
     //console_printf("\n end carga %d\n", end_carga);
   }
 
