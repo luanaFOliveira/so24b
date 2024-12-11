@@ -1,7 +1,6 @@
 #ifndef PROCESSO_H
 #define PROCESSO_H
 #include "tabpag.h"
-#include "mmu.h"
 #include "err.h"
 
 typedef struct processo_t processo_t;
