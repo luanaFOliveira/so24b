@@ -10,17 +10,18 @@
 #include "programa.h"
 #include "tabpag.h"
 #include "instrucao.h"
-#include "escalonador.h"
 #include "processo.h"
 #include "controle_es.h"
 #include "controle_quadros.h"
-#include "memoria.h"
+#include "escalonador.h"
 #include "controle_blocos.h"
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+
 // CONSTANTES E TIPOS {{{1
 // intervalo entre interrupções do relógio
 #define INTERVALO_INTERRUPCAO 100   // em instruções executadas
@@ -103,6 +104,7 @@ struct so_t {
   int ponteiro_disco;
   controle_blocos_t *controle_blocos;
   int num_pag_fisica;
+  int tempo_disco_livre;
 };
 
 
@@ -170,7 +172,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   self->ponteiro_disco = 0;
   self->num_pag_fisica = mem_tam(self->mem)/TAM_PAGINA;
   self->controle_blocos = cria_controle_blocos(self->num_pag_fisica);
-
+  self->tempo_disco_livre = 0;
   //metricas
   self->num_processos_criados = 0;
   self->tempo_total_exec = 0;
@@ -214,10 +216,10 @@ void so_destroi(so_t *self)
 {
   so_imprime_metricas(self);
   cpu_define_chamaC(self->cpu, NULL, NULL);
-  escalonador_destroi(self->escalonador, self->controle_quadros);
+  escalonador_destroi(self->escalonador,self->mmu, self->controle_quadros);
   destroi_controle_es(self->controle_es);
   for (int i = 0; i < self->num_processos; i++) {
-    processo_destroi(self->tabela_processos[i],self->controle_quadros);
+    processo_destroi(self->tabela_processos[i],self->mmu,self->controle_quadros);
 
   }
   free(self->tabela_processos);
@@ -1173,20 +1175,39 @@ static void so_trata_page_fault(so_t *self) {
         console_printf("SO: página vítima escolhida = %d", vitima);
         so_trata_page_fault_com_substituicao(self, end_causador, vitima);
     }
+    // int tempo_atual;
+    // if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
+    //     console_printf("SO: erro ao ler o relógio");
+    //     return;
+    // }
+
+    // if(tempo_atual > self->tempo_relogio_atual){
+    //   console_printf(
+    //       "SO: processo %d - bloqueia para espera de disco (%d)",
+    //       processo_pid(self->processo_corrente),
+    //       tempo_atual
+    //   );
+    //   so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA,tempo_atual+TEMPO_TRANSFERENCIA);
+    // }
     int tempo_atual;
     if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
-        console_printf("SO: erro ao ler o relógio");
+        console_printf("SO: erro ao ler o relógio\n");
         return;
     }
 
-    if(tempo_atual > self->tempo_relogio_atual){
-      console_printf(
-          "SO: processo %d - bloqueia para espera de disco (%d)",
-          processo_pid(self->processo_corrente),
-          tempo_atual
-      );
-      so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA,tempo_atual+TEMPO_TRANSFERENCIA);
+    if (tempo_atual < self->tempo_disco_livre) {
+        self->tempo_disco_livre += TEMPO_TRANSFERENCIA;
+    } else {
+        self->tempo_disco_livre = tempo_atual + TEMPO_TRANSFERENCIA;
     }
+
+    console_printf(
+        "SO: processo %d - bloqueia para espera de disco (%d)\n",
+        processo_pid(self->processo_corrente),
+        self->tempo_disco_livre
+    );
+
+    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, self->tempo_disco_livre);
 }
 
 
