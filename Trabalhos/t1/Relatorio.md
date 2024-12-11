@@ -4,16 +4,31 @@
 
 Este relatório apresenta o desenvolvimento de um sistema operacional simplificado, abordando conceitos fundamentais como gerenciamento de processos, escalonamento e análise de desempenho. O objetivo é implementar funcionalidades que simulem o funcionamento de um sistema operacional, permitindo a criação, execução, bloqueio e finalização de processos, além de implementar mecanismos de escalonamento e coleta de métricas para avaliação do sistema.
 
-Para isso foi criado uma classe para representar processos, nela é possivel realizar operações basicas com o processo, como buscar e setar os parametros dele, e tambem tem funções auxiliares como funcoes para bloquear, desbloquear, parar, executar, entre outras.
+Para representar os processos, foi criada uma estrutura. O estado de um processo é definido por um enum com quatro estados possíveis: em execução, pronto, bloqueado ou morto. Além disso, o processo possui um atributo para indicar o motivo do bloqueio, que pode ser determinado por um enum com quatro razões: bloqueio por leitura, por escrita, por espera ou sem motivo. O sistema operacional adota comportamentos diferentes dependendo do tipo de bloqueio.
 
-Além disso foi feito uma classe representando o escalonador, nele tem suporte para 3 tipos de escalonadores, o simples, o round robin e o por prioridade. O escalonador é responsavel por escolher o processo que sera executa e assim definir a ordem que os processos serao executados.
+A estrutura do processo também armazena o identificador da porta que está sendo utilizada para operações de entrada e saída, além de conter os registradores do processador, como o PC, A e X, necessários para salvar e restaurar o contexto do processo.
 
-Como os processos acessam os dispositivos de entrada e saida como o teclado e a tela, foi necessario implementar uma classe para controlar a disponibilidade desses dispositivos de entrada e saida, para que cada processo acesse um de cada vez.
+Para registrar as métricas de cada processo, a estrutura também armazena informações como o tempo de retorno, o número de preempções, a quantidade de vezes que o processo esteve em cada estado, o tempo total em cada estado e o tempo médio de resposta do processo.
 
-## Desenvolvimento 
+Na classe de processos, foram implementadas funções para realizar as operações básicas de obtenção (get) e modificação (set) dos atributos de um processo. Além disso, a classe conta com métodos para realizar operações como bloquear, desbloquear, executar, encerrar e pausar um processo. Também foram desenvolvidas funções auxiliares para alterar o estado de um processo, realizar verificações e armazenar métricas relacionadas ao seu comportamento. Por fim, há uma função específica para calcular as métricas de desempenho de um processo.
 
-O trabalho consistiu em implementar uma estrutura para representar processos e uma tabela para gerenciá-los, além de funções para salvar e restaurar o estado do processador. Foram criados mecanismos para realizar o escalonamento de processos, primeiro de forma simples e, posteriormente, com preempção e prioridades dinâmicas. Adicionalmente, foi desenvolvido suporte para bloqueio de processos durante operações de entrada/saída e tratamento de dependências entre processos. Por fim, o sistema foi configurado para coletar métricas detalhadas, como tempos de execução, número de preempções, e tempos médios em diferentes estados, permitindo avaliar o comportamento e
-a eficiência do sistema operacional sob diferentes configurações e cenários.
+Para representar o escalonador, foi criada uma estrutura que suporta os três tipos de escalonamento: simples, circular e por prioridade. A estrutura utiliza uma lista circular para armazenar os processos, mantendo o controle tanto do início quanto do fim da lista. Cada nó da lista contém um processo e um ponteiro para o próximo nó, permitindo a navegação entre os processos.
+
+Os processos precisam acessar portas para realizar operações de leitura e escrita. Para garantir que esses acessos ocorram corretamente, é necessário verificar se a tela está pronta para receber dados e se o teclado está disponível para enviar informações. Para isso, na estrutura de controle_es armazena o status da tela e do teclado, além de um indicador que mostra se a porta está em uso ou não. Cada processo possui um identificador de porta, o qual indica a porta que está sendo utilizada.
+
+Nos três tipos de escalonadores, a adição e remoção de processos da lista seguem o mesmo procedimento: o processo é inserido no final da lista e, para removê-lo, é excluído apenas o processo específico da lista. A principal diferença entre os escalonadores está na função responsável por escolher o próximo processo a ser executado.
+
+### Escalonador Simples
+No escalonador simples, o próximo processo a ser executado é sempre o primeiro processo pronto encontrado na lista. Esse processo permanece em execução até que seja bloqueado ou finalize sua execução.
+
+### Escalonador Round-Robin
+
+No escalonador round-robin, o próximo processo a ser executado também é o primeiro processo pronto encontrado na lista. No entanto, se o tempo de execução do processo exceder um quantum pré-definido, ele é interrompido e movido para o final da fila. Isso permite a alternância entre os processos, garantindo que todos tenham a oportunidade de executar.
+
+### Escalonador por Prioridade
+
+Para o escalonador com prioridades, ao buscar o próximo processo para ser executado, ele seleciona o processo pronto com a maior prioridade. A prioridade de um processo é ajustada dinamicamente: quando um processo para de executar, seja por bloqueio ou por exceder o tempo de quantum, sua prioridade é recalculada. Esse ajuste favorece processos que realizam operações rápidas.
+
 
 ## Testes de desempenho
 
