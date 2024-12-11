@@ -47,7 +47,7 @@ int mem_tam(mem_t *self)
 
 int mem_tempo_disponivel(mem_t *self)
 {
-  return self->tam;
+  return self->tempo_disponivel;
 }
 
 void set_mem_tempo_disponivel(mem_t *self, int tempo){

@@ -242,6 +242,12 @@ void processo_set_prioridade(processo_t *processo,double prioridade){
     processo->prioridade = prioridade;
 }
 
+void processo_set_tipo_bloqueio(processo_t *processo,int tipo){
+    if (processo == NULL)
+        exit(1);
+    processo->tipo_bloqueio = tipo;
+}
+
 void processo_set_estado(processo_t *processo,processo_estado_t estado){
     if (processo == NULL)
         exit(1);
@@ -261,7 +267,6 @@ void processo_destroi(processo_t *self, mmu_t *mmu,controle_quadros_t *controle_
     if (self == NULL)
         exit(1);
     tabpag_destroi(self->tab_pag, controle_quadros);
-    //mmu_define_tabpag(mmu, NULL);   
     free(self);
 }
 

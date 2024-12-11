@@ -7,6 +7,8 @@ typedef struct {
     bool em_uso;
     int processo_pid;
     int pagina;
+    int ciclos;
+    bool chance;
 } bloco_t;
 
 typedef struct controle_blocos_t {
