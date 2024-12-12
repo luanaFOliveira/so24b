@@ -1,31 +1,32 @@
 Número de processos criados: 1
-Tempo total de execução: 4.00
+Tempo total de execução: 0.00
 Tempo total ocioso: 0.00
 Número total de preempções: 0
 Número de vezes de interrupções por IRQ:
   IRQ 0: 1 vezes
-  IRQ 1: 1 vezes
+  IRQ 1: 0 vezes
   IRQ 2: 0 vezes
   IRQ 3: 0 vezes
   IRQ 4: 0 vezes
   IRQ 5: 0 vezes
 Processo ID (PID): 1
-Estado: Bloqueado
-Prioridade: 0.19
-Motivo do bloqueio: Motivo Desconhecido
-Tipo de bloqueio: 5
+Estado: Pronto
+Prioridade: 0.75
+Motivo do bloqueio: Sem Motivo
+Tipo de bloqueio: -1
 Terminal ID: -1
 Registradores: PC=0, X=0, A=0
-Tempo de retorno: 4.00
+Numero de page faults: 0
+Tempo de retorno: 0.00
 Número de preempções: 0
-Número de page faults: 1
+Número de page faults: 0
 Número de vezes em estados:
-  Estado 0: 1 vezes
+  Estado 0: 0 vezes
   Estado 1: 1 vezes
-  Estado 2: 1 vezes
+  Estado 2: 0 vezes
   Estado 3: 0 vezes
 Tempo total em estados:
-  Estado 0: 4 ms
+  Estado 0: 0 ms
   Estado 1: 0 ms
   Estado 2: 0 ms
   Estado 3: 0 ms

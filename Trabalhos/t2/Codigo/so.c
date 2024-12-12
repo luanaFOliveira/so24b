@@ -1045,7 +1045,6 @@ void so_bloqueia_por_espera_disco_livre(so_t *self)
   if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
       console_printf("SO: erro ao ler o relógio\n");
       return;
-      return;
   }
 
   if (tempo_atual >= self->tempo_disco_livre)
