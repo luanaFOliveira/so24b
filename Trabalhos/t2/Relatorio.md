@@ -471,41 +471,41 @@ Um terceiro teste foi realizado, onde retomamos o tamanho da Memória Secundári
 ### 1. Tempo Total de Execução
 
 O tempo total de execução dos processos variou significativamente entre os testes.
-**Primeiro teste:**
+**Primeiro teste**:
     - O tempo total foi 15568 ms. Todos os processos completaram suas execuções, com variações nos    tempos de resposta e retorno.
 
-**Segundo teste:**
+**Segundo teste**:
     - O tempo total foi 68509 ms, um aumento substancial devido à redução do tamanho da memória secundária (para 1000) e ao número elevado de interrupções. Aqui, o sistema entrou em um loop, o que indica limitações no gerenciamento da memória e escalonamento.
 
-**Terceiro teste:** 
+**Terceiro teste** :
   	- Com o aumento do tamanho das páginas (12), o tempo total foi reduzido para 14867 ms, mostrando um sistema mais eficiente e estável com o ajuste das configurações.
 
-**Conclusão:**
+**Conclusão**:
  A configuração da memória secundária e o tamanho das páginas afetam diretamente o desempenho do sistema, fazendo assim ele ter mais page fault
 
 ### 2. Preempções e Interrupções
-**Primeiro teste:** 
+**Primeiro teste**:
     - Total de 10 preempções e interrupções concentradas em IRQs 1 (245 vezes) e 2 (313 vezes) para os 4 processos.
 
-**Segundo teste:**
+**Segundo teste**:
     - Total de 67 preempções, com destaque para IRQ 3 (685 vezes) devido ao loop.
 Terceiro teste: Retorna a 10 preempções, semelhante ao primeiro teste.
 
 
 ### 3. Tempos de Retorno e Resposta (por processo)
-**Primiro teste:**
+**Primiro teste**:
     - Processo 1: Retorno 15059 ms, Resposta 12 ms.
     - Processo 2: Retorno 15219 ms, Resposta 92 ms.
     - Processo 3: Retorno 15487 ms, Resposta 205 ms.
     - Processo 4: Retorno 15568 ms, Resposta 376 ms.
 
-**Segundo teste:**
+**Segundo teste**:
     - Processo 1: Retorno 68000 ms, Resposta 176 ms.
     - Processo 2: Retorno 68125 ms, Resposta 2000 ms.
     - Processo 3: Retorno 68392 ms, Resposta 3412 ms.
     - Processo 4: Retorno 68509 ms, Resposta 4321 ms.
 
-**Terceiro teste:**
+**Terceiro teste**:
     - Processo 1: Retorno 14001 ms, Resposta 12 ms.
     - Processo 2: Retorno 14201 ms, Resposta 92 ms.
     - Processo 3: Retorno 14613 ms, Resposta 205 ms.
