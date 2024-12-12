@@ -24,6 +24,8 @@ Foram criadas duas estruturas para controlar as memorias, o controle de quadros 
 
 Infelizmente, não conseguimos fazer o programa funcionar 100%. Em um momento específico, ele removia um processo e logo em seguida escalonava o mesmo processo, o que fazia o programa parar de funcionar. Além disso, não tivemos tempo de continuar implementando o bloqueador de processos quando ocorria um page fault.
 
+Além disso, foi implementado a lógica para bloquear um processo quando o disco não está livre, porém essa parte do código estava fazendo com que o código inteiro parasse de rodar, e não tivemos tempo de descobrir onde estava o erro. Para controlar esse tempo foi adicionado uma variável no SO armazenando o tempo de disco livre que indicaria quando ele estivesse livre, assim quando ocorrem as trocas de páginas entre memória secundária e principal o processo seria bloqueado e deveria aguardar até que pudesse acessar o disco. 
+
 ## Testes de desempenho
 
 Os testes foram feitos alterando o escalonador prioritário para analisar algumas metricas
