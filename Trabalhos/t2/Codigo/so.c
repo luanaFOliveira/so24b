@@ -28,7 +28,7 @@
 #define MAX_PROCESSOS 16 // numero máximo de processos
 #define QUANTUM 10
 #define NUM_TERMINAIS 4
-#define TIPO_ESCALONADOR CIRCULAR
+#define TIPO_ESCALONADOR PRIORIDADE
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
 #define TOTAL_QUADROS 20 // Número total de quadros na memória física
@@ -258,7 +258,7 @@ static int so_trata_interrupcao(void *argC, int reg_A)
   so_escalona(self);
   // recupera o estado do processo escolhido
 
-  if(so_tem_trabalho(self)) return so_despacha(self);
+  if(so_tem_trabalho(self) == 1) return so_despacha(self);
   else return so_termina(self);
 }
 
@@ -316,7 +316,8 @@ static void so_escalona(so_t *self)
 {
  
   console_printf("SO: entrou em escalonar");
-  if(!so_deve_escalonar(self)) return;
+  if(so_deve_escalonar(self) == 0) return;
+
   if(self->processo_corrente != NULL){
     console_printf("SO: processo corrente nao eh nulo");
     double prioridade = so_calcula_prioridade_processo(self, self->processo_corrente);
@@ -335,8 +336,13 @@ static void so_escalona(so_t *self)
   so_imprime_metricas(self);
 
   processo_t *processo = escalonador_proximo(self->escalonador);
-  console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
-  
+  if (processo != NULL) {
+    console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
+  } else {
+    console_printf("SO: nenhum processo para escalonar");
+    so_imprime_metricas(self);
+  }
+
   so_executa_processo(self,processo);
 }
 
@@ -444,9 +450,9 @@ static void so_pendencias_escrita(so_t *self, processo_t *processo) {
     console_printf("SO: dado a ser escrito %d", dado);
     console_printf("SO: processo %d", processo_pid(processo));
 
-    if(processo_estado(self->processo_corrente) == MORTO){
-      so_desbloqueia_processo(self, processo);
-    }
+    // if(processo_estado(self->processo_corrente) == MORTO){
+    //   so_desbloqueia_processo(self, processo);
+    // }
 
     if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado) == 1) {
         console_printf("SO: processo %d desbloqueado após escrita no terminal %d", processo_pid(processo), es_id);
@@ -660,7 +666,7 @@ static void so_chamada_le(so_t *self)
   so_reserva_es_processo(self, processo);
   int es_id = processo_es_id(processo);
   int dado;
-  if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado)) {
+  if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado) ==1) {
       processo_set_A(processo,dado);  
       console_printf("Dado %d vindo do processo %d",dado,processo_pid(processo));
   } else {
@@ -683,7 +689,7 @@ static void so_chamada_escr(so_t *self)
   int es_id = processo_es_id(processo);
   int dado = processo_X(processo); 
 
-  if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado)) {
+  if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado) == 1) {
       processo_set_A(processo,0);  
 
   } else {
@@ -703,7 +709,7 @@ static void so_chamada_cria_proc(so_t *self)
   if(processo == NULL) return;
   int ender_proc = processo_X(processo);
   char nome[100];
-  if (so_copia_str_do_processo(self, 100, nome, ender_proc, processo)) {
+  if (so_copia_str_do_processo(self, 100, nome, ender_proc, processo) == 1) {
     console_printf("SO: endereço do programa %d", ender_proc);
     console_printf("SO: carreguei %s", nome);
     processo_t *processo_alvo = so_gera_processo(self, nome);
@@ -959,6 +965,7 @@ static void so_imprime_metricas(so_t *self){
     fprintf(file, "Tipo de bloqueio: %d\n", processo_tipo_bloqueio(processo));
     fprintf(file, "Terminal ID: %d\n", processo_es_id(processo));
     fprintf(file, "Registradores: PC=%d, X=%d, A=%d\n", processo_PC(processo), processo_X(processo), processo_A(processo));
+    fprintf(file, "Numero de page faults: %d\n", processo_num_page_fault(processo));
 
     fprintf(file, "Tempo de retorno: %.2f\n", processo_tempo_retorno(processo));
     fprintf(file, "Número de preempções: %d\n", processo_num_preempcoes(processo));
@@ -1038,6 +1045,7 @@ void so_bloqueia_por_espera_disco_livre(so_t *self)
   if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
       console_printf("SO: erro ao ler o relógio\n");
       return;
+      return;
   }
 
   if (tempo_atual >= self->tempo_disco_livre)
@@ -1058,7 +1066,6 @@ void so_bloqueia_por_espera_disco_livre(so_t *self)
 
 
 static bool copiar_pagina_disco_para_quadro(so_t *self, int endereco_disco, int quadro_destino) {
-    
     for (int offset = 0; offset < TAM_PAGINA; offset++) {
         int dado;
         if (mem_le(self->mem_secundaria, endereco_disco + offset, &dado) != ERR_OK) {
@@ -1103,7 +1110,7 @@ static bool swap_out(so_t *self, int quadro_vitima) {
     processo_t *processo_vitima = so_busca_processo(self, pid_vitima);
     tabpag_t *tabela_vitima = processo_tab_pag(processo_vitima);
 
-    if (tabpag_pagina_modificada(tabela_vitima, quadro_vitima)) {
+    if (tabpag_pagina_modificada(tabela_vitima, quadro_vitima) == 1) {
         int endereco_disco_vitima = processo_endereco_disco(processo_vitima) + (pagina_vitima * TAM_PAGINA);
         if (endereco_disco_vitima < 0) {
             console_printf("Erro ao calcular o endereço de disco.");
@@ -1140,19 +1147,18 @@ static bool swap_in(so_t *self, int quadro_destino, int end_causador) {
     tabpag_define_quadro(processo_tab_pag(self->processo_corrente), 
                          end_causador / TAM_PAGINA, quadro_destino, 
                          self->controle_quadros);
-    
     console_printf("SO: página carregada no quadro físico");
     return true;
 }
 
 static void so_trata_page_fault_com_substituicao(so_t *self, int end_causador, int quadro_vitima) {
     console_printf("SO: substituindo página vítima = %d", quadro_vitima);
-    if (!swap_out(self, quadro_vitima)) {
+    if (swap_out(self, quadro_vitima) == 0) {
         self->erro_interno = true;
         return;
     }
 
-    if (!swap_in(self, quadro_vitima, end_causador)) {
+    if (swap_in(self, quadro_vitima, end_causador) == 0) {
         self->erro_interno = true;
         return;
     }
@@ -1163,7 +1169,7 @@ static void so_trata_page_fault_com_substituicao(so_t *self, int end_causador, i
 static void so_trata_page_fault_bloco_disponivel(so_t *self, int end_causador) {
     int bloco_disponivel = controle_blocos_busca_bloco_disponivel(self->controle_blocos);
     console_printf("SO: bloco disponível = %d", bloco_disponivel);
-    if (!swap_in(self, bloco_disponivel, end_causador)) {
+    if (swap_in(self, bloco_disponivel, end_causador) == 0) {
         self->erro_interno = true;
         return;
     }
