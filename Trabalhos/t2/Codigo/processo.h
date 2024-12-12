@@ -68,4 +68,6 @@ void processo_encerra(processo_t *processo);
 void processo_libera_es(processo_t *processo);
 void atualiza_prioridade(processo_t *processo);
 void processo_metricas(processo_t *processo, int delta);
+int processo_num_page_fault(processo_t *processo);
+void processo_set_num_page_fault(processo_t *processo, int num);
 #endif 

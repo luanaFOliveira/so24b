@@ -118,15 +118,19 @@ processo_t *escalonador_proximo(escalonador_t *self){
 }
 
 processo_t *escalonador_proximo_processo_simples(escalonador_t *self) {
-    if(self == NULL ) {
-        console_printf("Escalonador  self NULL\n");
-        return NULL;
-    }
+    // if(self == NULL ) {
+    //     console_printf("Escalonador  self NULL\n");
+    //     return NULL;
+    // }
     if (self->inicio == NULL) {
         console_printf("Escalonador inicio NULL\n");
         return NULL;
-
     } 
+    for (no_t *no = self->inicio; no != NULL; no = no->prox) {
+        if (processo_estado(no->processo) == EM_EXECUCAO) {
+        return no->processo;
+        }
+    }
     return self->inicio->processo; 
 }
 
@@ -141,7 +145,7 @@ processo_t *escalonador_proximo_processo_circular(escalonador_t *self) {
 
     console_printf("Escalonador tipo circular01\n");
 
-        console_printf("Escalonador tipo circular02\n");
+    console_printf("Escalonador tipo circular02\n");
 
     return self->inicio->processo;
 }
@@ -149,24 +153,31 @@ processo_t *escalonador_proximo_processo_circular(escalonador_t *self) {
 
 
 processo_t *escalonador_proximo_processo_prioridade(escalonador_t *self) {
-        console_printf("Escalonador tipo prioridade\n");
-    if (self == NULL || self->inicio == NULL) return NULL;
+    console_printf("Escalonador tipo prioridade\n");
+    if (self->inicio == NULL) return NULL;
 
-    no_t *p = self->inicio;
-    no_t *selecionado = NULL;
+    //no_t *p = self->inicio;
+    //no_t *selecionado = NULL;
 
+    processo_t *candidato = self->inicio->processo;
 
-    do {
-        if (processo_estado(p->processo) == PRONTO) {
-            if (selecionado == NULL || processo_prioridade(p->processo) < processo_prioridade(selecionado->processo)) {
-                selecionado = p;
-            }
+    for (no_t *no = self->inicio->prox; no != NULL; no = no->prox) {
+        if (processo_prioridade(no->processo) < processo_prioridade(candidato)) {
+        candidato = no->processo;
         }
-        console_printf("nao ta pronto\n");
-        p = p->prox;
-    } while (p != self->inicio);
+    }
+    return candidato;
+    // do {
+    //     if (processo_estado(p->processo) == PRONTO) {
+    //         if (selecionado == NULL || processo_prioridade(p->processo) < processo_prioridade(selecionado->processo)) {
+    //             selecionado = p;
+    //         }
+    //     }
+    //     console_printf("nao ta pronto\n");
+    //     p = p->prox;
+    // } while (p != self->inicio);
 
-    return (selecionado != NULL) ? selecionado->processo : NULL;
+    //return (selecionado != NULL) ? selecionado->processo : NULL;
 }
 
 
