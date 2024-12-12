@@ -20,6 +20,7 @@ struct processo_t {
     int tempo_estados[4];
 
     int tempo_medio_resposta;
+    int num_page_fault;
 
     tabpag_t *tab_pag;
 
@@ -53,6 +54,7 @@ processo_t *processo_cria(int id) {
         self->tempo_estados[i] = 0;
     }
     self->num_vezes_estados[PRONTO]++;
+    self->num_page_fault = 0;
     
     self->tab_pag = tabpag_cria();
     return self;
@@ -194,6 +196,14 @@ tabpag_t *processo_tab_pag(processo_t *processo) {
     return processo->tab_pag;
 }
 
+int processo_num_page_fault(processo_t *processo){
+    return processo->num_page_fault;
+}
+
+void processo_set_num_page_fault(processo_t *processo, int num){
+    processo->num_page_fault = num;
+}
+
 //setters
 void processo_set_es_id(processo_t *processo, int es_id){
     if (processo == NULL)
@@ -260,6 +270,8 @@ void processo_set_estado(processo_t *processo,processo_estado_t estado){
     processo->num_vezes_estados[estado]++;
     processo->estado = estado;
 }
+
+
 
 // funcoes
 

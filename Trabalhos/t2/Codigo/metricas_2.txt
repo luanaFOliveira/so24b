@@ -1,0 +1,99 @@
+Número de processos criados: 4
+Tempo total de execução: 15568.00
+Tempo total ocioso: 0.00
+Número total de preempções: 10
+Número de vezes de interrupções por IRQ:
+  IRQ 0: 1 vezes
+  IRQ 1: 245 vezes
+  IRQ 2: 313 vezes
+  IRQ 3: 155 vezes
+  IRQ 4: 0 vezes
+  IRQ 5: 0 vezes
+Processo ID (PID): 1
+Estado: Bloqueado
+Prioridade: 0.56
+Motivo do bloqueio: Espera
+Tipo de bloqueio: 2
+Terminal ID: 0
+Registradores: PC=38, X=2, A=9
+Tempo de retorno: 15568.00
+Número de preempções: 0
+Número de page faults: 33
+Número de vezes em estados:
+  Estado 0: 1 vezes
+  Estado 1: 1 vezes
+  Estado 2: 1 vezes
+  Estado 3: 0 vezes
+Tempo total em estados:
+  Estado 0: 533 ms
+  Estado 1: 0 ms
+  Estado 2: 15035 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 0 ms
+---------------------------------
+Processo ID (PID): 2
+Estado: Bloqueado
+Prioridade: 0.02
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 32
+Terminal ID: 1
+Registradores: PC=160, X=32, A=2
+Tempo de retorno: 15102.00
+Número de preempções: 8
+Número de page faults: 71
+Número de vezes em estados:
+  Estado 0: 13 vezes
+  Estado 1: 13 vezes
+  Estado 2: 5 vezes
+  Estado 3: 0 vezes
+Tempo total em estados:
+  Estado 0: 9144 ms
+  Estado 1: 5623 ms
+  Estado 2: 335 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 432 ms
+---------------------------------
+Processo ID (PID): 3
+Estado: Bloqueado
+Prioridade: 0.02
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 32
+Terminal ID: 2
+Registradores: PC=162, X=32, A=2
+Tempo de retorno: 15078.00
+Número de preempções: 1
+Número de page faults: 70
+Número de vezes em estados:
+  Estado 0: 13 vezes
+  Estado 1: 13 vezes
+  Estado 2: 12 vezes
+  Estado 3: 0 vezes
+Tempo total em estados:
+  Estado 0: 3610 ms
+  Estado 1: 10674 ms
+  Estado 2: 794 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 821 ms
+---------------------------------
+Processo ID (PID): 4
+Estado: Bloqueado
+Prioridade: 0.09
+Motivo do bloqueio: Escrita
+Tipo de bloqueio: 49
+Terminal ID: 3
+Registradores: PC=160, X=49, A=2
+Tempo de retorno: 15059.00
+Número de preempções: 1
+Número de page faults: 71
+Número de vezes em estados:
+  Estado 0: 11 vezes
+  Estado 1: 11 vezes
+  Estado 2: 10 vezes
+  Estado 3: 0 vezes
+Tempo total em estados:
+  Estado 0: 2281 ms
+  Estado 1: 11988 ms
+  Estado 2: 790 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 1089 ms
+---------------------------------

@@ -35,31 +35,8 @@
 #define TAMANHO_MEM_SECUNDARIA 60000
 #define TEMPO_TRANSFERENCIA 1
 
-// Não tem processos nem memória virtual, mas é preciso usar a paginação,
-//   pelo menos para implementar relocação, já que os programas estão sendo
-//   todos montados para serem executados no endereço 0 e o endereço 0
-//   físico é usado pelo hardware nas interrupções.
-// Os programas estão sendo carregados no início de um quadro, e usam quantos
-//   quadros forem necessárias. Para isso a variável quadro_livre contém
-//   o número do primeiro quadro da memória principal que ainda não foi usado.
-//   Na carga do processo, a tabela de páginas (deveria ter uma por processo,
-//   mas não tem processo) é alterada para que o endereço virtual 0 resulte
-//   no quadro onde o programa foi carregado. Com isso, o programa carregadocesso ao qual elas se referem. Para isso, precisa de u
-//   é acessível, mas o acesso ao anterior é perdido.
-
-// t2: a interface de algumas funções que manipulam memória teve que ser alterada,
-//   para incluir o prom
-//   tipo para o processo. Neste código, não tem processos implementados, e não
-//   tem um tipo para isso. Chutei o tipo int. Foi necessário também um valor para
-//   representar a inexistência de um processo, coloquei -1. Altere para o seu
-//   tipo, ou substitua os usos de processo_t e NENHUM_PROCESSO para o seu tipo.
 
 
-//@TODO= ver como criar e definir o tamanho da memoria secundaria
-//@TODO= ver com o benhur sobre a funcao so_copia_str_do_processo que nao esta sendo chamada, onde chamar, no mesmo lugar de copia_str..
-//o procesos q manda eh o processo que chama
-//@TODO= ver com o benhur qual unidade de medida do tempo de transferencia- tipo 10 - quantos tick de relogio - ver q horas sao pelo relogio e ver o tempo - marca la processo ta bloqueado por troca de pagina ate tal hora e na pendencia - outro tipo de bloqueia  - transfere os dados tudo na hora mas bloqueia o processo e manda ele esperar 
-//@TODO=  oq seria esse tempo de agora? "atualiza-se esse tempo para "agora" mais o tempo de espera; "
 struct so_t {
   cpu_t *cpu;
   mem_t *mem;
@@ -85,20 +62,16 @@ struct so_t {
   float tempo_total_ocioso;
   int num_total_preempcoes;
   int num_vezes_interrupocoes[N_IRQ];
+  int total_page_fault;
 
-  // primeiro quadro da memória que está livre (quadros anteriores estão ocupados)
-  // t2: com memória virtual, o controle de memória livre e ocupada é mais
-  //     completo que isso
+  
   controle_quadros_t *controle_quadros;
-  // uma tabela de páginas para poder usar a MMU
-  // t2: com processos, não tem esta tabela global, tem que ter uma para
-  //     cada processo
-  //tabpag_t *tabpag_global;
-  int algoritmo_substituicao; // Para armazenar o algoritmo escolhido
-  int fila_quadros[TOTAL_QUADROS]; // Gerenciamento FIFO ou Segunda Chance
-  int pos_fila_inicio;            // Início da fila circular
-  int pos_fila_fim;               // Fim da fila circular
-  int bits_acesso[TOTAL_QUADROS]; // Para Segunda Chance
+  
+  int algoritmo_substituicao; 
+  int fila_quadros[TOTAL_QUADROS]; 
+  int pos_fila_inicio;            
+  int pos_fila_fim;               
+  int bits_acesso[TOTAL_QUADROS]; 
 
   mem_t *mem_secundaria;
   int ponteiro_disco;
@@ -157,7 +130,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
 
   self->pos_fila_inicio = 0;
   self->pos_fila_fim = 0;
-  self->algoritmo_substituicao = ALGORITMO_FIFO; // Escolha padrão
+  self->algoritmo_substituicao = ALGORITMO_FIFO; 
   memset(self->bits_acesso, 0, sizeof(self->bits_acesso));
 
   self->controle_es = cria_controle_es(es);
@@ -181,7 +154,7 @@ so_t *so_cria(cpu_t *cpu, mem_t *mem, mmu_t *mmu,
   for (int i = 0; i < N_IRQ; i++) {
     self->num_vezes_interrupocoes[i] = 0;
   }
-
+  self->total_page_fault = 0;
   // quando a CPU executar uma instrução CHAMAC, deve chamar a função
   //   so_trata_interrupcao, com primeiro argumento um ptr para o SO
   cpu_define_chamaC(self->cpu, so_trata_interrupcao, self);
@@ -273,6 +246,7 @@ static int so_trata_interrupcao(void *argC, int reg_A)
 {
   so_t *self = argC;
   irq_t irq = reg_A;
+  self->num_vezes_interrupocoes[irq]++;
   // salva o estado da cpu no descritor do processo que foi interrompido
   so_salva_estado_da_cpu(self);
   so_tick(self);
@@ -358,10 +332,11 @@ static void so_escalona(so_t *self)
   }
 
   console_printf("SO: passou pelo adicionou processooo, %d", processo_pid(self->processo_corrente));
+  so_imprime_metricas(self);
 
   processo_t *processo = escalonador_proximo(self->escalonador);
   console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
-
+  
   so_executa_processo(self,processo);
 }
 
@@ -956,7 +931,7 @@ const char* tipo_escalonador_nome() {
 
 static void so_imprime_metricas(so_t *self){
   char nome_arquivo[100];
-  sprintf(nome_arquivo, "metricas_%s.txt", tipo_escalonador_nome());
+  sprintf(nome_arquivo, "metricas_%d.txt",TAMANHO_MEM_SECUNDARIA );
 
   FILE *file = fopen(nome_arquivo, "w");
   if (file == NULL) {
@@ -987,6 +962,7 @@ static void so_imprime_metricas(so_t *self){
 
     fprintf(file, "Tempo de retorno: %.2f\n", processo_tempo_retorno(processo));
     fprintf(file, "Número de preempções: %d\n", processo_num_preempcoes(processo));
+    fprintf(file, "Número de page faults: %d\n", processo_num_page_fault(processo));
 
     fprintf(file, "Número de vezes em estados:\n");
     for (int j = 0; j < 4; j++) {
@@ -1055,47 +1031,29 @@ static int escolhe_pagina_substituicao(so_t *self) {
     }
 }
 
-static bool disco_disponivel(so_t *self, int tempo_pedido)
+
+void so_bloqueia_por_espera_disco_livre(so_t *self)
 {
   int tempo_atual;
   if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
       console_printf("SO: erro ao ler o relógio\n");
-      return false;
+      return;
   }
-
 
   if (tempo_atual >= self->tempo_disco_livre)
   {
-    // Disco está livre, atualiza próximo horário livre
-    self->tempo_disco_livre = tempo_atual + tempo_pedido;
-    return true;
+    self->tempo_disco_livre = tempo_atual + TEMPO_TRANSFERENCIA;
+    int tempo_bloqueio = TEMPO_TRANSFERENCIA + tempo_atual;
+    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, tempo_bloqueio);
   }
   else
   {
-    // Disco ocupado, soma o tempo pedido ao tempo que já vai levar
-    self->tempo_disco_livre += tempo_pedido;
-    return false;
-  }
-}
-
-void bloqueia_por_espera_disco(so_t *self)
-{
-  if (!disco_disponivel(self, TEMPO_TRANSFERENCIA))
-  {
+    self->tempo_disco_livre += TEMPO_TRANSFERENCIA;
     int tempo_bloqueio = TEMPO_TRANSFERENCIA + self->tempo_disco_livre;
     so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, tempo_bloqueio);
     return;
   }
-  else
-  {
-    int tempo_atual;
-    if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
-        console_printf("SO: erro ao ler o relógio\n");
-        return;
-    }
-    int tempo_bloqueio = TEMPO_TRANSFERENCIA + tempo_atual;
-    so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, tempo_bloqueio);
-  }
+
 }
 
 
@@ -1150,7 +1108,8 @@ static bool swap_out(so_t *self, int quadro_vitima) {
         if (endereco_disco_vitima < 0) {
             console_printf("Erro ao calcular o endereço de disco.");
         }
-
+        //so_bloqueia_por_espera_disco_livre(self);
+        //OBS - a logica parece estar correta porem quando descomenta isso ele nao roda - nao deu tempo de resolver o problema
         if (!copiar_quadro_para_disco(self, quadro_vitima, endereco_disco_vitima)) {
             console_printf("Erro ao salvar página vítima no disco");
             return false;
@@ -1168,7 +1127,8 @@ static bool swap_in(so_t *self, int quadro_destino, int end_causador) {
     int end_disk_ini = processo_endereco_disco(self->processo_corrente) + 
                        end_causador - (end_causador % TAM_PAGINA);
     int end_disk = end_disk_ini;
-
+    //so_bloqueia_por_espera_disco_livre(self);
+    //OBS - a logica parece estar correta porem quando descomenta isso ele nao roda - nao deu tempo de resolver o problema
     if (!copiar_pagina_disco_para_quadro(self, end_disk, quadro_destino)) {
         console_printf("Erro ao carregar página do disco no quadro físico");
         return false;
@@ -1218,7 +1178,9 @@ static void so_trata_page_fault_bloco_disponivel(so_t *self, int end_causador) {
 static void so_trata_page_fault(so_t *self) {
     int end_causador = processo_complemento(self->processo_corrente);
     console_printf("SO: endereço causador do page fault = %d", end_causador);
-
+    int num = processo_num_page_fault(self->processo_corrente);
+    processo_set_num_page_fault(self->processo_corrente, num + 1);
+    self->total_page_fault++;
     if (controle_blocos_bloco_disponivel(self->controle_blocos)) {
         console_printf("SO: espaço livre encontrado");
         so_trata_page_fault_bloco_disponivel(self, end_causador);
@@ -1235,47 +1197,8 @@ static void so_trata_page_fault(so_t *self) {
         console_printf("SO: página vítima escolhida = %d", vitima);
         so_trata_page_fault_com_substituicao(self, end_causador, vitima);
     }
-    // int tempo_atual;
-    // if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
-    //     console_printf("SO: erro ao ler o relógio");
-    //     return;
-    // }
-
-    // if(tempo_atual > self->tempo_relogio_atual){
-    //   console_printf(
-    //       "SO: processo %d - bloqueia para espera de disco (%d)",
-    //       processo_pid(self->processo_corrente),
-    //       tempo_atual
-    //   );
-    //   so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA,tempo_atual+TEMPO_TRANSFERENCIA);
-    // }
-    // int tempo_atual;
-    // if (es_le(self->es, D_RELOGIO_INSTRUCOES, &tempo_atual) != ERR_OK) {
-    //     console_printf("SO: erro ao ler o relógio\n");
-    //     return;
-    // }
-
-    // if (tempo_atual > self->tempo_disco_livre) {
-    //   console_printf(
-    //       "SO: processo %d - bloqueia para espera de disco até %d\n",
-    //       processo_pid(self->processo_corrente),
-    //       tempo_atual + TEMPO_TRANSFERENCIA
-    //   );
-
-    //   // Bloqueia o processo até o tempo de espera
-    //   self->tempo_disco_livre = tempo_atual + TEMPO_TRANSFERENCIA;
-    //   so_bloqueia_processo(self, self->processo_corrente, ESPERA_PAGINA, self->tempo_disco_livre);
-    // } else {
-    //     // Caso o tempo atual seja menor que o tempo de disco livre, o processo já está esperando
-    //     // Não é necessário bloquear novamente, apenas adiar o tempo de espera
-    //     self->tempo_disco_livre += TEMPO_TRANSFERENCIA;
-    // }
 }
 
-
-//@TODO - colocar os erros q tem no readme -- soh tem dois acessos ao disco - memoria principal - alem dos registradores - toda falha de pagina gera pelo menos dois acessos ao disco
-//tem q ver esse negocio do bloco - duas funcoes para copiar o bloco para o quadro e copia pagina para o bloco - e funcao para alterar o tempo do disco
-// toda vez q tiver page fault ele bloqueia o processo por falta de pagina - soh tem q ver o quanto de tempo q ele vai ficar bloqueado
 
 
 // CARGA DE PROGRAMA {{{1
