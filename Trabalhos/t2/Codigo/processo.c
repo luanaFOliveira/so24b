@@ -2,6 +2,7 @@
 
 #include "processo.h"
 #include "console.h"
+#include <assert.h>
 
 struct processo_t {
     processo_estado_t estado;
@@ -266,35 +267,39 @@ void processo_set_estado(processo_t *processo,processo_estado_t estado){
 void processo_destroi(processo_t *self,controle_quadros_t *controle_quadros) {
     if (self == NULL)
         exit(1);
-    tabpag_destroi(self->tab_pag, controle_quadros);
+    //mmu_define_tabpag(mmu, NULL);   
     free(self);
 }
 
 
 void processo_bloqueia(processo_t *processo, bloqueio_motivo_t motivo_bloqueio, int tipo_bloqueio) {
-    if (processo == NULL)
-        exit(1);
-    if( processo->estado == PRONTO || processo->estado == EM_EXECUCAO){
-        processo_set_estado(processo, BLOQUEADO);
-        //processo->estado = BLOQUEADO;
-        processo->motivo_bloqueio = motivo_bloqueio;
+    if(motivo_bloqueio == ESPERA_PAGINA && processo->estado == BLOQUEADO && processo->motivo_bloqueio == ESPERA_PAGINA){
         processo->tipo_bloqueio = tipo_bloqueio;
-        
-    }   
+        return;
+    }
+
+     assert(
+    (processo->estado == EM_EXECUCAO) ||
+    (processo->estado == PRONTO)
+  );
+
+    processo_set_estado(processo, BLOQUEADO);
+    //processo->estado = BLOQUEADO;
+    processo->motivo_bloqueio = motivo_bloqueio;
+    processo->tipo_bloqueio = tipo_bloqueio;  
 }
 
 void processo_desbloqueia(processo_t *processo) {
+    console_printf("Desbloqueando processo %d", processo_pid(processo));
     if (processo == NULL)
         exit(1);   
     if( processo->estado == BLOQUEADO){
         processo_set_estado(processo, PRONTO);
-        //processo->estado = PRONTO;
-        // processo->motivo_bloqueio = SEM_MOTIVO;
-        // processo->tipo_bloqueio = -1;
     }   
 }
 
 void processo_para(processo_t *processo) {
+    console_printf("Parando processo %d", processo_pid(processo));
     if (processo == NULL)
         exit(1);  
     if(processo->estado == EM_EXECUCAO){
@@ -305,6 +310,7 @@ void processo_para(processo_t *processo) {
 
 
 void processo_executa(processo_t *processo) {
+    console_printf("Executando processo %d", processo_pid(processo));
     if (processo == NULL)
         exit(1);  
     if(processo->estado == PRONTO){
@@ -314,6 +320,7 @@ void processo_executa(processo_t *processo) {
 }
 
 void processo_encerra(processo_t *processo) {
+    console_printf("Encerrando processo %d", processo_pid(processo));
     if (processo == NULL)
         exit(1);  
     processo_set_estado(processo, MORTO);

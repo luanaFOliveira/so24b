@@ -28,7 +28,7 @@
 #define MAX_PROCESSOS 16 // numero máximo de processos
 #define QUANTUM 10
 #define NUM_TERMINAIS 4
-#define TIPO_ESCALONADOR PRIORIDADE
+#define TIPO_ESCALONADOR CIRCULAR
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
 #define TOTAL_QUADROS 20 // Número total de quadros na memória física
@@ -249,7 +249,6 @@ static processo_t *so_busca_processo(so_t *self,int pid);
 static void so_bloqueia_processo(so_t *self, processo_t *processo, bloqueio_motivo_t motivo,int tipo_bloqueio);
 static void so_desbloqueia_processo(so_t *self, processo_t *processo);
 static processo_t *so_gera_processo(so_t *self, char *programa);
-static void so_mata_processo(so_t *self, processo_t *processo);
 static void so_reserva_es_processo(so_t *self, processo_t *processo);
 static int so_termina(so_t *self);
 static bool so_tem_trabalho(so_t *self);
@@ -325,9 +324,11 @@ static void so_trata_pendencias(so_t *self)
 static double so_calcula_prioridade_processo(so_t *self, processo_t *processo){
   int t_exec = self->tempo_quantum - self->tempo_restante;
 
+
   double prioridade = processo_prioridade(processo);
   prioridade += (double)t_exec / self->tempo_quantum;
   prioridade /= 2.0;
+  console_printf("SO: calculou prioridade do processo %d, %f", processo_pid(processo), prioridade);
   return prioridade;
 }
 
@@ -342,22 +343,24 @@ static void so_escalona(so_t *self)
  
   console_printf("SO: entrou em escalonar");
   if(!so_deve_escalonar(self)) return;
-
   if(self->processo_corrente != NULL){
-
+    console_printf("SO: processo corrente nao eh nulo");
     double prioridade = so_calcula_prioridade_processo(self, self->processo_corrente);
     processo_set_prioridade(self->processo_corrente, prioridade);
   }
+
+  console_printf("SO: passou pelo adicionou processo, %d", processo_pid(self->processo_corrente));
+  console_printf("printa estado do processo corrente %s", processo_estado_nome(self->processo_corrente));
 
   if(self->processo_corrente != NULL && processo_estado(self->processo_corrente) == EM_EXECUCAO){
     escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
     console_printf("SO: escalonador adicionou processo, %d", processo_pid(self->processo_corrente));
   }
 
+  console_printf("SO: passou pelo adicionou processooo, %d", processo_pid(self->processo_corrente));
+
   processo_t *processo = escalonador_proximo(self->escalonador);
   console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
-  if(processo != NULL);
-  else console_printf("SO: nenhum processo para escalonar");
 
   so_executa_processo(self,processo);
 }
@@ -379,7 +382,8 @@ static int so_despacha(so_t *self)
     int a = processo_A(processo);
     int x = processo_X(processo);
     int complemento = processo_complemento(processo);
-    
+      
+  
     mem_escreve(self->mem, IRQ_END_PC, pc);
     mem_escreve(self->mem, IRQ_END_A, a);
     mem_escreve(self->mem, IRQ_END_X, x);
@@ -389,11 +393,6 @@ static int so_despacha(so_t *self)
     tabpag_t *tab_pag = processo_tab_pag(processo);
     mmu_define_tabpag(self->mmu, tab_pag); 
 
-    int q;
-    int err = tabpag_traduz(tab_pag, pc/TAM_PAGINA, &q);
-    console_printf("   %d, traduzido da página virtual %d", q, pc/TAM_PAGINA);
-    console_printf("Erro foi: %d. ERR_OK é %d", err, ERR_OK);
-    console_printf("Processo = #%d", processo_pid(processo));
     return 0; 
   } else {
     return 1; 
@@ -448,11 +447,12 @@ static void so_pendencias_leitura(so_t *self, processo_t *processo) {
 
     int es_id = processo_es_id(processo);
     int dado;
-    if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado)) {
+    if (es_id != -1 && controle_le_dispositivo(self->controle_es, es_id, &dado)== 1) {
+        console_printf("SO: processo %d desbloqueado após leitura no terminal %d", processo_pid(processo), es_id);
+
         processo_set_A(processo,dado);  
         so_desbloqueia_processo(self, processo);  
 
-        console_printf("SO: processo %d desbloqueado após leitura no terminal %d", processo_pid(processo), es_id);
     } else {
         console_printf("SO: terminal %d não está pronto para leitura", es_id);
     }
@@ -465,12 +465,20 @@ static void so_pendencias_escrita(so_t *self, processo_t *processo) {
 
     int es_id = processo_es_id(processo);
     int dado = processo_tipo_bloqueio(processo);  
+    console_printf("SO: escrevendo no terminal %d", es_id);
+    console_printf("SO: dado a ser escrito %d", dado);
+    console_printf("SO: processo %d", processo_pid(processo));
 
-    if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado)) {
+    if(processo_estado(self->processo_corrente) == MORTO){
+      so_desbloqueia_processo(self, processo);
+    }
+
+    if (es_id != -1 && controle_escreve_dispositivo(self->controle_es, es_id, dado) == 1) {
+        console_printf("SO: processo %d desbloqueado após escrita no terminal %d", processo_pid(processo), es_id);
+
         processo_set_A(processo,0); 
         so_desbloqueia_processo(self, processo);  
 
-        console_printf("SO: processo %d desbloqueado após escrita no terminal %d", processo_pid(processo), es_id);
     } else {
         console_printf("SO: terminal %d não está pronto para escrita", es_id);
     }
@@ -501,11 +509,11 @@ static void so_pendencias_espera_pagina(so_t *self, processo_t *processo) {
       return;
   }
 
-  int tempo_desbloqueio = processo_tipo_bloqueio(processo);
-
-  if (tempo_atual >= tempo_desbloqueio) {
-      console_printf("SO: desbloqueando processo %d\n", processo_pid(processo));
-      processo_set_A(processo, 0); 
+  int tempo_bloqueio = processo_tipo_bloqueio(processo);
+      console_printf("SO: desbloqueando processo tempo de bloqueio %d, tempo atual %d\n", 
+          tempo_bloqueio, self->tempo_relogio_atual);
+  if (self->tempo_relogio_atual >= tempo_bloqueio) {
+    console_printf("SO1: desbloqueando processo\n");
       so_desbloqueia_processo(self, processo);
   }
 }
@@ -567,8 +575,9 @@ static void so_trata_irq_reset(so_t *self)
 
   self->processo_corrente = processo;
 
+  processo_set_PC(processo, ender);
+
   // altera o PC para o endereço de carga (deve ter sido o endereço virtual 0)
- mem_escreve(self->mem, IRQ_END_PC, processo_PC(self->processo_corrente));  // passa o processador para modo usuário
   mem_escreve(self->mem, IRQ_END_modo, usuario);
 }
 
@@ -733,7 +742,18 @@ static void so_chamada_cria_proc(so_t *self)
  
   processo_set_A(processo,-1);
 }
+static void so_mata_processo(so_t *self, processo_t *processo) {
+    int es_id = processo_es_id(processo);
+    console_printf("SO: matando processo %d", processo_pid(processo));
 
+    if (es_id != -1) {
+        processo_libera_es(processo);
+        controle_libera_dispositivo(self->controle_es,es_id);
+    }
+    //console_printf("SO: escalonador removeu processo, %d", processo_pid(processo));
+    escalonador_remove_processo(self->escalonador, processo);
+    processo_encerra(processo);
+}
 // implementação da chamada se sistema SO_MATA_PROC
 // mata o processo com pid X (ou o processo corrente se X é 0)
 static void so_chamada_mata_proc(so_t *self)
@@ -758,7 +778,6 @@ static void so_chamada_mata_proc(so_t *self)
     processo_set_A(processo,-1);
   }
 }
-
 // implementação da chamada se sistema SO_ESPERA_PROC
 // espera o fim do processo com pid X
 static void so_chamada_espera_proc(so_t *self)
@@ -772,28 +791,32 @@ static void so_chamada_espera_proc(so_t *self)
   int pid_alvo = processo_X(processo);
   processo_t *processo_alvo = so_busca_processo(self,pid_alvo);
 
-  if(processo_alvo == NULL || processo_alvo == processo){
+  if(processo_alvo == NULL){
     processo_set_A(processo,-1);
     return;
   }
 
   if(processo_estado(processo_alvo) == MORTO){
     processo_set_A(processo,0);
-  }else{
-    so_bloqueia_processo(self,processo,ESPERA,pid_alvo);
+    return;
   }
+  so_bloqueia_processo(self,processo,ESPERA,pid_alvo);
+
 }
 
 static void so_bloqueia_processo(so_t *self, processo_t *processo, bloqueio_motivo_t motivo,int tipo_bloqueio){
+  //console_printf("SO: escalonador removeu processo por bloqueio, %d", processo_pid(processo));
+  processo_bloqueia(processo, motivo, tipo_bloqueio);
+
   escalonador_remove_processo(self->escalonador, processo);
   so_calcula_mudanca_estado_processo(self,processo);
-  processo_bloqueia(processo, motivo, tipo_bloqueio);
 }
 
 static void so_desbloqueia_processo(so_t *self, processo_t *processo){
-  so_calcula_mudanca_estado_processo(self,processo);
   processo_desbloqueia(processo);
   escalonador_adiciona_processo(self->escalonador,processo);
+  so_calcula_mudanca_estado_processo(self,processo);
+
 }
 
 static void so_reserva_es_processo(so_t *self, processo_t *processo)
@@ -808,9 +831,13 @@ static void so_reserva_es_processo(so_t *self, processo_t *processo)
 }
 
 static processo_t *so_busca_processo(so_t *self,int pid){
-  if (pid <= 0 || pid > self->num_processos) {
-    return NULL;
+    for (int i = 0; i < self->num_processos; i++) {
+    if (processo_pid(self->tabela_processos[i]) == pid) {
+      return self->tabela_processos[i];
+    }
   }
+
+  return NULL;
 
   return self->tabela_processos[pid - 1];
 }
@@ -843,17 +870,7 @@ static processo_t *so_gera_processo(so_t *self, char *programa) {
 }
 
 
-static void so_mata_processo(so_t *self, processo_t *processo) {
-    int es_id = processo_es_id(processo);
 
-    if (es_id != -1) {
-        processo_libera_es(processo);
-        controle_libera_dispositivo(self->controle_es,es_id);
-    }
-    console_printf("SO: escalonador removeu processo, %d", processo_pid(processo));
-    escalonador_remove_processo(self->escalonador, processo);
-    processo_encerra(processo);
-}
 
 static void so_executa_processo(so_t *self, processo_t *processo) {
     console_printf("dentro de executa processo %d.\n", processo_pid(processo));
@@ -861,13 +878,7 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
     if (self->processo_corrente != NULL && self->processo_corrente != processo && processo_estado(self->processo_corrente) == EM_EXECUCAO) {
         console_printf("Parando processo.\n");
         processo_para(self->processo_corrente);
-        so_calcula_mudanca_estado_processo(self, self->processo_corrente);
         self->num_total_preempcoes++;
-
-        if (processo_estado(self->processo_corrente) != MORTO) {
-            console_printf("Reinserindo processo no escalonador numero pid %d.\n", processo_pid(self->processo_corrente));
-            escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
-        }
     }
 
     if (processo != NULL && processo_estado(processo) != EM_EXECUCAO) {
@@ -875,7 +886,7 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
         processo_executa(processo);
     }
 
-    if (processo != NULL && processo_estado(processo) != MORTO) {
+    if (processo != NULL) {
         escalonador_remove_processo(self->escalonador, processo);
     }
 
@@ -887,6 +898,7 @@ static void so_executa_processo(so_t *self, processo_t *processo) {
 
 
 static bool so_deve_escalonar(so_t *self){
+  console_printf("printa tudo %d %d %d %d", self->processo_corrente == NULL, processo_estado(self->processo_corrente) != EM_EXECUCAO, self->tempo_restante <= 0);
   if (self->processo_corrente == NULL || processo_estado(self->processo_corrente) != EM_EXECUCAO || self->tempo_restante <= 0) {
     return true;
   }

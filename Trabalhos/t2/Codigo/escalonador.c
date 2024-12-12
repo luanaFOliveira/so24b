@@ -33,7 +33,6 @@ void escalonador_destroi(escalonador_t *self,controle_quadros_t *controle_quadro
     no_t *p = self->inicio;
     while (p != NULL) {
         no_t *t = p->prox;
-        processo_destroi(p->processo, controle_quadros);
         free(p);
         if (t == self->inicio) break;
         p = t;
@@ -44,18 +43,22 @@ void escalonador_destroi(escalonador_t *self,controle_quadros_t *controle_quadro
 
 void escalonador_adiciona_processo(escalonador_t *self, processo_t *processo) {
     if (self == NULL || processo == NULL) return;
-    no_t *no = (no_t *) malloc(sizeof(*no));
-    no->processo = processo;
-    no->prox = self->inicio;
 
-    if (self->fim == NULL) {
-        self->inicio = no;
+    no_t *no = (no_t *)malloc(sizeof(*no));
+    if (no == NULL) return; // Falha na alocação de memória
+
+    no->processo = processo;
+
+    if (self->inicio == NULL) { // Lista vazia
+        self->inicio = self->fim = no;
+        no->prox = self->inicio; // Torna a lista circular
     } else {
+        no->prox = self->inicio;
         self->fim->prox = no;
+        self->fim = no;
     }
-    self->fim = no;
-    self->fim->prox = self->inicio; 
 }
+
 
 void escalonador_remove_processo(escalonador_t *self, processo_t *processo) {
     if (self == NULL || self->inicio == NULL || processo == NULL) return;
@@ -67,6 +70,9 @@ void escalonador_remove_processo(escalonador_t *self, processo_t *processo) {
         if (p->processo == processo) {
             if (p == self->inicio && p == self->fim) {
                 self->inicio = self->fim = NULL;
+                console_printf("Processo removido pid do carai = %d\n", processo_pid(processo));
+                free(p);
+                return;
             }
             else if (p == self->inicio) {
                 self->inicio = p->prox;
@@ -79,18 +85,21 @@ void escalonador_remove_processo(escalonador_t *self, processo_t *processo) {
             else {
                 ant->prox = p->prox;
             }
+            console_printf("Processo removido pid = %d\n", processo_pid(processo));
             free(p);
             return;
         }
         ant = p;
         p = p->prox;
     } while (p != self->inicio);
-    console_printf("Processo não encontrado\n");
+    console_printf("Processo não encontrado pid = %d\n", processo_pid(processo));
 }
 
 
 
 processo_t *escalonador_proximo(escalonador_t *self){
+
+    console_printf("Escalonador tipo: %d\n", self->tipo_escalonador);
     switch (self->tipo_escalonador)
     {
     case SIMPLES:
@@ -109,27 +118,43 @@ processo_t *escalonador_proximo(escalonador_t *self){
 }
 
 processo_t *escalonador_proximo_processo_simples(escalonador_t *self) {
-    if (self == NULL || self->inicio == NULL) return NULL;
+    if(self == NULL ) {
+        console_printf("Escalonador  self NULL\n");
+        return NULL;
+    }
+    if (self->inicio == NULL) {
+        console_printf("Escalonador inicio NULL\n");
+        return NULL;
+
+    } 
     return self->inicio->processo; 
 }
 
 processo_t *escalonador_proximo_processo_circular(escalonador_t *self) {
-    if (self == NULL || self->inicio == NULL) return NULL;
-    
-    no_t *p = self->inicio;
-    if (p == NULL) return NULL; 
-    
-    self->inicio = self->inicio->prox; 
-    return p->processo;
+    console_printf("Escalonador tipo circular00\n");
+
+    if (self->inicio == NULL) {
+        console_printf("luana\n");
+        return NULL;
+
+    } 
+
+    console_printf("Escalonador tipo circular01\n");
+
+        console_printf("Escalonador tipo circular02\n");
+
+    return self->inicio->processo;
 }
 
 
 
 processo_t *escalonador_proximo_processo_prioridade(escalonador_t *self) {
+        console_printf("Escalonador tipo prioridade\n");
     if (self == NULL || self->inicio == NULL) return NULL;
 
     no_t *p = self->inicio;
     no_t *selecionado = NULL;
+
 
     do {
         if (processo_estado(p->processo) == PRONTO) {
@@ -137,6 +162,7 @@ processo_t *escalonador_proximo_processo_prioridade(escalonador_t *self) {
                 selecionado = p;
             }
         }
+        console_printf("nao ta pronto\n");
         p = p->prox;
     } while (p != self->inicio);
 

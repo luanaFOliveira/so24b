@@ -51,18 +51,23 @@ int controle_registra_dispositivo(controle_es_t* self, dispositivo_id_t leitura,
     return novo_dispositivo->id;
 }
 
-bool controle_le_dispositivo(controle_es_t* self, int id, int* pvalor) {
-    for (int i = 0; i < self->num_dispositivos; i++) {
-        dispositivo_es_t* es_atual = &self->dispositivos[i];
-        if (es_atual->id == id) {
-            int ok;
-            if (es_le(self->es, es_atual->leitura_ok, &ok) != ERR_OK || !ok) {
-                return false;
-            }
-            return es_le(self->es, es_atual->leitura, pvalor) == ERR_OK;
-        }
+bool controle_le_dispositivo(controle_es_t *self, int id, int *pvalor)
+{
+  int ok;
+
+  if (id < self->num_dispositivos){
+
+    if (es_le(self->es, self->dispositivos[id].leitura_ok, &ok) != ERR_OK) {
+        return false;
     }
-    return false;
+
+    if (!ok) {
+        return false;
+    }
+
+  }
+
+  return es_le(self->es, self->dispositivos[id].leitura, pvalor) == ERR_OK;
 }
 
 bool controle_escreve_dispositivo(controle_es_t* self, int id, int valor) {
