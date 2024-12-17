@@ -12,7 +12,7 @@ Número de vezes de interrupções por IRQ:
 Processo ID (PID): 1
 Estado: Morto
 Prioridade: 0.09
-Motivo do bloqueio: Motivo Desconhecido
+Motivo do bloqueio: Esperando pagina
 Tipo de bloqueio: 28569
 Terminal ID: -1
 Registradores: PC=60, X=0, A=0

@@ -1,0 +1,103 @@
+Número de processos criados: 4
+Tempo total de execução: 34631.00
+Tempo total ocioso: 14745.00
+Número total de preempções: 6
+Número de vezes de interrupções por IRQ:
+  IRQ 0: 1 vezes
+  IRQ 1: 276 vezes
+  IRQ 2: 462 vezes
+  IRQ 3: 346 vezes
+  IRQ 4: 0 vezes
+  IRQ 5: 0 vezes
+Processo ID (PID): 1
+Estado: Morto
+Prioridade: 0.03
+Motivo do bloqueio: Esperando pagina
+Tipo de bloqueio: 34533
+Terminal ID: -1
+Registradores: PC=60, X=0, A=0
+Numero de page faults: 46
+Tempo de retorno: 34631.00
+Número de preempções: 0
+Número de page faults: 46
+Número de vezes em estados:
+  Estado 0: 50 vezes
+  Estado 1: 50 vezes
+  Estado 2: 49 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 885 ms
+  Estado 1: 91 ms
+  Estado 2: 33655 ms
+  Estado 3: 0 ms
+Tempo médio de resposta: 1 ms
+---------------------------------
+Processo ID (PID): 2
+Estado: Morto
+Prioridade: 0.00
+Motivo do bloqueio: Esperando pagina
+Tipo de bloqueio: 16032
+Terminal ID: -1
+Registradores: PC=86, X=0, A=0
+Numero de page faults: 77
+Tempo de retorno: 13783.00
+Número de preempções: 6
+Número de page faults: 77
+Número de vezes em estados:
+  Estado 0: 88 vezes
+  Estado 1: 88 vezes
+  Estado 2: 81 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 9200 ms
+  Estado 1: 3636 ms
+  Estado 2: 947 ms
+  Estado 3: 18543 ms
+Tempo médio de resposta: 41 ms
+---------------------------------
+Processo ID (PID): 3
+Estado: Morto
+Prioridade: 0.00
+Motivo do bloqueio: Esperando pagina
+Tipo de bloqueio: 17165
+Terminal ID: -1
+Registradores: PC=88, X=0, A=0
+Numero de page faults: 76
+Tempo de retorno: 14827.00
+Número de preempções: 0
+Número de page faults: 76
+Número de vezes em estados:
+  Estado 0: 92 vezes
+  Estado 1: 92 vezes
+  Estado 2: 91 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 3955 ms
+  Estado 1: 8815 ms
+  Estado 2: 2057 ms
+  Estado 3: 17457 ms
+Tempo médio de resposta: 95 ms
+---------------------------------
+Processo ID (PID): 4
+Estado: Morto
+Prioridade: 0.03
+Motivo do bloqueio: Esperando pagina
+Tipo de bloqueio: 33633
+Terminal ID: -1
+Registradores: PC=86, X=0, A=0
+Numero de page faults: 77
+Tempo de retorno: 31358.00
+Número de preempções: 0
+Número de page faults: 77
+Número de vezes em estados:
+  Estado 0: 214 vezes
+  Estado 1: 214 vezes
+  Estado 2: 213 vezes
+  Estado 3: 1 vezes
+Tempo total em estados:
+  Estado 0: 5846 ms
+  Estado 1: 12325 ms
+  Estado 2: 13187 ms
+  Estado 3: 900 ms
+Tempo médio de resposta: 57 ms
+---------------------------------

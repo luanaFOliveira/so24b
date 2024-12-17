@@ -32,7 +32,7 @@
 #define ALGORITMO_FIFO 0
 #define ALGORITMO_SEGUNDA_CHANCE 1
 #define TOTAL_QUADROS 20 // Número total de quadros na memória física
-#define TAMANHO_MEM_SECUNDARIA 60000
+#define TAMANHO_MEM_SECUNDARIA 6000
 #define TEMPO_TRANSFERENCIA 1
 
 
@@ -325,7 +325,7 @@ static void so_escalona(so_t *self)
   }
 
   console_printf("SO: passou pelo adicionou processo, %d", processo_pid(self->processo_corrente));
-  console_printf("printa estado do processo corrente %s", processo_estado_nome(self->processo_corrente));
+  //console_printf("printa estado do processo corrente %s", processo_estado_nome(self->processo_corrente));
 
   if(self->processo_corrente != NULL && processo_estado(self->processo_corrente) == EM_EXECUCAO){
     escalonador_adiciona_processo(self->escalonador, self->processo_corrente);
@@ -333,14 +333,14 @@ static void so_escalona(so_t *self)
   }
 
   console_printf("SO: passou pelo adicionou processooo, %d", processo_pid(self->processo_corrente));
-  so_imprime_metricas(self);
+  //so_imprime_metricas(self);
 
   processo_t *processo = escalonador_proximo(self->escalonador);
   if (processo != NULL) {
     console_printf("SO: escalonador escolheu proximo processo, %d", processo_pid(processo));
   } else {
     console_printf("SO: nenhum processo para escalonar");
-    so_imprime_metricas(self);
+    //so_imprime_metricas(self);
   }
 
   so_executa_processo(self,processo);
@@ -937,7 +937,7 @@ const char* tipo_escalonador_nome() {
 
 static void so_imprime_metricas(so_t *self){
   char nome_arquivo[100];
-  sprintf(nome_arquivo, "metricas_%d.txt",TAMANHO_MEM_SECUNDARIA );
+  sprintf(nome_arquivo, "metricas_%d_%d.txt",TAMANHO_MEM_SECUNDARIA, TAM_PAGINA );
 
   FILE *file = fopen(nome_arquivo, "w");
   if (file == NULL) {
@@ -1114,8 +1114,7 @@ static bool swap_out(so_t *self, int quadro_vitima) {
         if (endereco_disco_vitima < 0) {
             console_printf("Erro ao calcular o endereço de disco.");
         }
-        //so_bloqueia_por_espera_disco_livre(self);
-        //OBS - a logica parece estar correta porem quando descomenta isso ele nao roda - nao deu tempo de resolver o problema
+        so_bloqueia_por_espera_disco_livre(self);
         if (!copiar_quadro_para_disco(self, quadro_vitima, endereco_disco_vitima)) {
             console_printf("Erro ao salvar página vítima no disco");
             return false;
@@ -1133,8 +1132,7 @@ static bool swap_in(so_t *self, int quadro_destino, int end_causador) {
     int end_disk_ini = processo_endereco_disco(self->processo_corrente) + 
                        end_causador - (end_causador % TAM_PAGINA);
     int end_disk = end_disk_ini;
-    //so_bloqueia_por_espera_disco_livre(self);
-    //OBS - a logica parece estar correta porem quando descomenta isso ele nao roda - nao deu tempo de resolver o problema
+    so_bloqueia_por_espera_disco_livre(self);
     if (!copiar_pagina_disco_para_quadro(self, end_disk, quadro_destino)) {
         console_printf("Erro ao carregar página do disco no quadro físico");
         return false;

@@ -65,98 +65,98 @@ processo_t *processo_cria(int id) {
 
 int processo_pid(processo_t *processo) {
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->pid;
 }
 
 processo_estado_t processo_estado(processo_t *processo) {
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->estado;
 }
 
 bloqueio_motivo_t processo_motivo_bloqueio(processo_t *processo) {
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->motivo_bloqueio;
 }
 
 int processo_tipo_bloqueio(processo_t *processo) {
     if (processo == NULL)
-        exit(1);
+       return -1;
     return processo->tipo_bloqueio;
 }
 
 int processo_es_id(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->es_id;
 }
 
 int processo_PC(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->PC;
 }
 
 int processo_A(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->A;
 }
 
 int processo_X(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->X;
 }
 
 int processo_complemento(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->complemento;
 }
 
 void processo_set_pc(processo_t *processo, int pc){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     return -1;
     processo->PC = pc;
 }
 
 err_t processo_erro(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->erro;
 }
 
 int processo_endereco_disco(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     console_printf("Endereco disco: %d", processo->endereco_disco);
     return processo->endereco_disco;
 }
 
 double processo_prioridade(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->prioridade;
 }
 
 float processo_tempo_retorno(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->tempo_retorno;
 }
 
 int processo_num_preempcoes(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->num_preempcoes;
 }
 
 int processo_tempo_medio_resposta(processo_t *processo){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->tempo_medio_resposta;
 }
 
@@ -176,19 +176,20 @@ const char* processo_bloqueio_nome(processo_t* processo) {
         case ESCRITA:     return "Escrita";
         case ESPERA:      return "Espera";
         case SEM_MOTIVO:  return "Sem Motivo";
+        case ESPERA_PAGINA:  return "Esperando pagina";
         default:          return "Motivo Desconhecido";
     }
 }
 
 int processo_num_vezes_estado(processo_t *processo, int estado_id){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->num_vezes_estados[estado_id];
 }
 
 int processo_tempo_estado(processo_t *processo, int estado_id){
     if (processo == NULL)
-        exit(1);
+        return -1;
     return processo->tempo_estados[estado_id];
 }
 
@@ -206,62 +207,62 @@ void processo_set_num_page_fault(processo_t *processo, int num){
 
 //setters
 void processo_set_es_id(processo_t *processo, int es_id){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->es_id = es_id;
 }
 
 void processo_set_PC(processo_t *processo, int pc){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->PC = pc;
 }
 
 void processo_set_A(processo_t *processo, int a){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->A = a;
 }
 
 void processo_set_X(processo_t *processo, int x){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->X = x;
 }
 
 void processo_set_complemento(processo_t *processo, int complemento){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->complemento = complemento;
 }
 
 void processo_set_erro(processo_t *processo, err_t erro){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->erro = erro;
 }
 
 void processo_set_endereco_disco(processo_t *processo, int ender_disco){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->endereco_disco = ender_disco;
 }
 
 void processo_set_prioridade(processo_t *processo,double prioridade){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->prioridade = prioridade;
 }
 
 void processo_set_tipo_bloqueio(processo_t *processo,int tipo){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->tipo_bloqueio = tipo;
 }
 
 void processo_set_estado(processo_t *processo,processo_estado_t estado){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
 
     // metricas
     if(processo->estado == EM_EXECUCAO && estado == PRONTO){
@@ -277,8 +278,8 @@ void processo_set_estado(processo_t *processo,processo_estado_t estado){
 
 
 void processo_destroi(processo_t *self,controle_quadros_t *controle_quadros) {
-    if (self == NULL)
-        exit(1);
+    // if (self == NULL)
+    //     exit(1);
     //mmu_define_tabpag(mmu, NULL);   
     free(self);
 }
@@ -303,8 +304,8 @@ void processo_bloqueia(processo_t *processo, bloqueio_motivo_t motivo_bloqueio, 
 
 void processo_desbloqueia(processo_t *processo) {
     console_printf("Desbloqueando processo %d", processo_pid(processo));
-    if (processo == NULL)
-        exit(1);   
+    // if (processo == NULL)
+    //     exit(1);   
     if( processo->estado == BLOQUEADO){
         processo_set_estado(processo, PRONTO);
     }   
@@ -312,8 +313,8 @@ void processo_desbloqueia(processo_t *processo) {
 
 void processo_para(processo_t *processo) {
     console_printf("Parando processo %d", processo_pid(processo));
-    if (processo == NULL)
-        exit(1);  
+    // if (processo == NULL)
+    //     exit(1);  
     if(processo->estado == EM_EXECUCAO){
         processo_set_estado(processo, PRONTO);
         //processo->estado = PRONTO;
@@ -323,8 +324,8 @@ void processo_para(processo_t *processo) {
 
 void processo_executa(processo_t *processo) {
     console_printf("Executando processo %d", processo_pid(processo));
-    if (processo == NULL)
-        exit(1);  
+    // if (processo == NULL)
+    //     exit(1);  
     if(processo->estado == PRONTO){
         processo_set_estado(processo, EM_EXECUCAO);
         //processo->estado = EM_EXECUCAO;
@@ -333,16 +334,16 @@ void processo_executa(processo_t *processo) {
 
 void processo_encerra(processo_t *processo) {
     console_printf("Encerrando processo %d", processo_pid(processo));
-    if (processo == NULL)
-        exit(1);  
+    // if (processo == NULL)
+    //     exit(1);  
     processo_set_estado(processo, MORTO);
     //processo->estado = MORTO;
     
 }
 
 void processo_libera_es(processo_t *processo){
-    if (processo == NULL)
-        exit(1);
+    // if (processo == NULL)
+    //     exit(1);
     processo->es_id = -1;
 }
 
