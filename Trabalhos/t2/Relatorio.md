@@ -1,4 +1,4 @@
-# RELATÓRIO DO TRABALHO 1 DA DISCIPLINA DE SISTEMAS OPERACIONAIS
+# RELATÓRIO DO TRABALHO 2 DA DISCIPLINA DE SISTEMAS OPERACIONAIS
 
 ## Introdução
 
@@ -20,176 +20,229 @@ Uma função essencial para esse trabalho foi o tratamento para a interrupção 
 
 Foram criadas duas estruturas para controlar as memorias, o controle de quadros para controlar os quadros da memoria principal e o controle de blocos para controlar os blocos do disco, elas armazenam informacoes basicas para indicar se foi usado o espaco e quem usou o espaco em memoria
 
+
 ## Testes de desempenho
 
-Os testes foram feitos alterando o tipo de escalonador para analisar algumas metricas
+Os testes foram feitos alterando o escalonador prioritário para analisar algumas metricas
 
-Para todos os testes foi usado um Quantum de 10, o Intervalo de Interrupcoes de 100, o tempo de transferencia apenas para simular foi de 1 e o tamanho da pagina foi de 3
+Neste primeiro teste foram utilizados os seguintes parâmetros:
+### Parametros gerais:
+- Quantum: 10
+- Intervalo de Interrupções: 100
+- Tempo de Transferência (simulado): 1
+- Total de Quadros: 20
+- Utilizamos primeiro o Algoritmo de Substituição: FIFO
 
-### Escalonador Simples
+### Primeiro teste
 
-Número de processos criados: 4
-Tempo total de execução: 24049.00
-Tempo total ocioso: 4610.00
-Número total de preempções: 56
-Número de vezes de interrupções por IRQ:
-  IRQ 0: 1 vezes
-  IRQ 1: 0 vezes
-  IRQ 2: 462 vezes
-  IRQ 3: 479 vezes
-  IRQ 4: 0 vezes
-  IRQ 5: 0 vezes
+- Tamanho da Página: 12
+- Tamanho da Memória Secundária: 60000 (um valor consideravelmente grande)
+
+---------------------------------
+#### Metricas gerais
+
+- **Número de processos criados**: 4  
+- **Tempo total de execução**: 28790.00 ms  
+- **Tempo total ocioso**: 9697.00 ms  
+- **Número total de preempções**: 6
+
+#### Interrupções por IRQ:
+- **IRQ 0**: 1 vez  
+- **IRQ 1**: 77 vezes  
+- **IRQ 2**: 462 vezes  
+- **IRQ 3**: 287 vezes  
+- **IRQ 4**: 0 vezes  
+- **IRQ 5**: 0 vezes  
+
 
 #### Metricas gerais para cada processo
 
-| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta |
-|-----|------------------|------------|-----------------|
-| 1   | 24049.00 ms        | 0          | 0 ms        |
-| 2   | 17097.00 ms         | 39          | 152 ms        |
-| 3   | 11989.00 ms         | 12          | 284 ms        |
-| 4   | 23331.00 ms        | 5          | 96 ms        | 
+| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta | Numero de page fault |
+|-----|------------------|------------|-----------------|-----------------|
+| 1   | 28790.00 ms        | 0          | 0 ms        | 14               |
+| 2   | 14940.00 ms         | 6          | 151 ms        | 21               |
+| 3   | 13569.00 ms         | 0          | 224 ms        | 21               |
+| 4   | 27390.00 ms        | 0          | 75 ms        |  21               |
 
 #### Metricas de tempo em cada estado para cada processo
 
 | PID | Tempo em execução  | Tempo pronto | Tempo bloqueado | Tempo morto |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 743 ms        | 0 ms         | 23306 ms        | 0 ms        |
-| 2   | 9198 ms         | 7307 ms          | 592 ms        | 6569 ms        |
-| 3   | 3756 ms         | 7403 ms         | 830 ms        | 11669 ms        |
-| 4   | 5742 ms        | 10610 ms          | 6979 ms        | 319 ms        | 
+| 1   | 766 ms        | 0 ms         | 28024 ms        | 0 ms        |
+| 2   | 8976 ms         | 5302 ms          | 662 ms        | 12843 ms        |
+| 3   | 3735 ms         | 8323 ms         | 1511 ms        | 14198 ms        |
+| 4   | 5616 ms        | 11725 ms          | 10049 ms        | 360 ms        | 
 
 #### Metricas de numero de vezes em cada estado para cada processo
 
 | PID |EM_EXECUCAO  | PRONTO | BLOQUEADO | MORTO |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 3 vezes        | 3 vezes         | 2 vezes        | 1 vezes      |
-| 2   | 48 vezes         | 48 vezes          | 8 vezes        | 1 vezes        |
-| 3   | 26 vezes         | 26 vezes          | 13 vezes        | 1 vezes       |
-| 4   | 110 vezes        | 110 vezes          | 104 vezes        | 1 vezes        | 
+| 1   | 17 vezes        | 17 vezes         | 16 vezes        | 1 vezes      |
+| 2   | 35 vezes         | 35 vezes          | 28 vezes        | 1 vezes        |
+| 3   | 37 vezes         | 37 vezes          | 36 vezes        | 1 vezes       |
+| 4   | 155 vezes        | 155 vezes          | 154 vezes        | 1 vezes        | 
 
-### Escalonador Round-Robin
 
-Número de processos criados: 4
-Tempo total de execução: 24049.00
-Tempo total ocioso: 4610.00
-Número total de preempções: 56
-Número de vezes de interrupções por IRQ:
-  IRQ 0: 1 vezes
-  IRQ 1: 0 vezes
-  IRQ 2: 462 vezes
-  IRQ 3: 479 vezes
-  IRQ 4: 0 vezes
-  IRQ 5: 0 vezes
+---
+
+### Segundo teste
+
+- Tamanho da Página: 3
+- Tamanho da Memória Secundária: 60000 (um valor consideravelmente grande)
+
+---------------------------------
+#### Metricas gerais
+
+- **Número de processos criados**: 4  
+- **Tempo total de execução**: 34631.00 ms  
+- **Tempo total ocioso**: 14745.00 ms  
+- **Número total de preempções**: 6
+
+#### Interrupções por IRQ:
+- **IRQ 0**: 1 vez  
+- **IRQ 1**: 276 vezes  
+- **IRQ 2**: 462 vezes  
+- **IRQ 3**: 346 vezes  
+- **IRQ 4**: 0 vezes  
+- **IRQ 5**: 0 vezes  
+
 
 #### Metricas gerais para cada processo
 
-| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta |
-|-----|------------------|------------|-----------------|
-| 1   | 24049.00 ms        | 0          | 0 ms        |
-| 2   | 17097.00 ms         | 39          | 152 ms        |
-| 3   | 11989.00 ms         | 12          | 284 ms        |
-| 4   | 23331.00 ms        | 5          | 96 ms        | 
+| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta | Numero de page fault |
+|-----|------------------|------------|-----------------|-----------------|
+| 1   | 34631.00 ms        | 0          | 1 ms        | 46               |
+| 2   | 13783.00 ms         | 6          | 41 ms        | 77               |
+| 3   | 14827.00 ms         | 0          | 95 ms        | 76               |
+| 4   | 31358.00 ms        | 0          | 57 ms        |  77               |
 
 #### Metricas de tempo em cada estado para cada processo
 
 | PID | Tempo em execução  | Tempo pronto | Tempo bloqueado | Tempo morto |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 743 ms        | 0 ms         | 23306 ms        | 0 ms        |
-| 2   | 9198 ms         | 7307 ms          | 592 ms        | 6569 ms        |
-| 3   | 3756 ms         | 7403 ms         | 830 ms        | 11669 ms        |
-| 4   | 5742 ms        | 10610 ms          | 6979 ms        | 319 ms        | 
+| 1   | 885 ms        | 91 ms         | 33655 ms        | 0 ms        |
+| 2   | 9200 ms         | 3636 ms          | 947 ms        | 18543 ms        |
+| 3   | 3955 ms         | 8815 ms         | 2057 ms        | 17457 ms        |
+| 4   | 5846 ms        | 12325 ms          | 13187 ms        | 900 ms        | 
 
 #### Metricas de numero de vezes em cada estado para cada processo
 
 | PID |EM_EXECUCAO  | PRONTO | BLOQUEADO | MORTO |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 3 vezes        | 3 vezes         | 2 vezes        | 1 vezes      |
-| 2   | 48 vezes         | 48 vezes          | 8 vezes        | 1 vezes        |
-| 3   | 26 vezes         | 26 vezes          | 13 vezes        | 1 vezes       |
-| 4   | 110 vezes        | 110 vezes          | 104 vezes        | 1 vezes        | 
+| 1   | 50 vezes        | 50 vezes         | 49 vezes        | 1 vezes      |
+| 2   | 88 vezes         | 88 vezes          | 81 vezes        | 1 vezes        |
+| 3   | 92 vezes         | 92 vezes          | 91 vezes        | 1 vezes       |
+| 4   | 214 vezes        | 214 vezes          | 213 vezes        | 1 vezes        | 
 
-### Escalonador Prioridade
 
-Número de processos criados: 4
-Tempo total de execução: 23496.00
-Tempo total ocioso: 4045.00
-Número total de preempções: 59
-Número de vezes de interrupções por IRQ:
-  IRQ 0: 1 vezes
-  IRQ 1: 0 vezes
-  IRQ 2: 462 vezes
-  IRQ 3: 468 vezes
-  IRQ 4: 0 vezes
-  IRQ 5: 0 vezes
+---
+
+### Terceiro teste
+
+- Tamanho da Página: 3
+- Tamanho da Memória Secundária: 6000 (um valor consideravelmente pequeno)
+
+---------------------------------
+#### Metricas gerais
+
+- **Número de processos criados**: 4  
+- **Tempo total de execução**: 34631.00 ms  
+- **Tempo total ocioso**: 14745.00 ms  
+- **Número total de preempções**: 6
+
+#### Interrupções por IRQ:
+- **IRQ 0**: 1 vez  
+- **IRQ 1**: 276 vezes  
+- **IRQ 2**: 462 vezes  
+- **IRQ 3**: 346 vezes  
+- **IRQ 4**: 0 vezes  
+- **IRQ 5**: 0 vezes  
+
 
 #### Metricas gerais para cada processo
 
-| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta |
-|-----|------------------|------------|-----------------|
-| 1   | 23496.00 ms        | 2          | 20 ms        |
-| 2   | 17550.00 ms         | 40          | 158 ms        |
-| 3   | 10180.00 ms         | 12          | 206 ms        |
-| 4   | 22678.00 ms        | 5          | 99 ms        | 
+| PID | Tempo de Retorno | Preempções | Tempo Médio de Resposta | Numero de page fault |
+|-----|------------------|------------|-----------------|-----------------|
+| 1   | 34631.00 ms        | 0          | 1 ms        | 46               |
+| 2   | 13783.00 ms         | 6          | 41 ms        | 77               |
+| 3   | 14827.00 ms         | 0          | 95 ms        | 76               |
+| 4   | 31358.00 ms        | 0          | 57 ms        |  77               |
 
 #### Metricas de tempo em cada estado para cada processo
 
 | PID | Tempo em execução  | Tempo pronto | Tempo bloqueado | Tempo morto |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 743 ms        | 100 ms         | 22653 ms        | 0 ms        |
-| 2   | 9216 ms         | 7788 ms          | 546 ms        | 5513 ms        |
-| 3   | 3771 ms         | 5380 ms         | 1029 ms        | 12875 ms        |
-| 4   | 5721 ms        | 10457 ms          | 6500 ms        | 369 ms        | 
+| 1   | 885 ms        | 91 ms         | 33655 ms        | 0 ms        |
+| 2   | 9200 ms         | 3636 ms          | 947 ms        | 18543 ms        |
+| 3   | 3955 ms         | 8815 ms         | 2057 ms        | 17457 ms        |
+| 4   | 5846 ms        | 12325 ms          | 13187 ms        | 900 ms        | 
 
 #### Metricas de numero de vezes em cada estado para cada processo
 
 | PID |EM_EXECUCAO  | PRONTO | BLOQUEADO | MORTO |
 |-----|------------------|------------|-----------------|-----------------|
-| 1   | 5 vezes        | 5 vezes         | 2 vezes        | 1 vezes      |
-| 2   | 49 vezes         | 49 vezes          | 8 vezes        | 1 vezes        |
-| 3   | 26 vezes         | 26 vezes          | 13 vezes        | 1 vezes       |
-| 4   | 105 vezes        | 105 vezes          | 99 vezes        | 1 vezes        | 
+| 1   | 50 vezes        | 50 vezes         | 49 vezes        | 1 vezes      |
+| 2   | 88 vezes         | 88 vezes          | 81 vezes        | 1 vezes        |
+| 3   | 92 vezes         | 92 vezes          | 91 vezes        | 1 vezes       |
+| 4   | 214 vezes        | 214 vezes          | 213 vezes        | 1 vezes        | 
+
+
+---
+
+
 
 ## Conclusão a Analise
 
-### 1. Tempo Total de Execução
+### Tempo Total de Execução
 
-O escalonador de Prioridade foi o mais eficiente em termos de tempo total de execução (23496 ms), reduzindo 553 ms em relação aos outros dois (Simples e Round-Robin), que levaram 24049 ms cada.
+O tempo total de execução dos processos variou significativamente entre os testes.
+**Primeiro teste**:
+    - O tempo total de execução foi 28.790 ms.
 
-Isso indica que a priorização permitiu uma melhor utilização dos recursos de CPU.
+**Segundo teste**:
+    -O tempo total de execução foi 34.631 ms.
 
-### 2. Tempo Total Ocioso
+**Terceiro teste** :
+  	-  O tempo total de execução também foi 34.631 ms.
 
-O escalonador de Prioridade também apresentou o menor tempo ocioso (4045 ms), sugerindo maior aproveitamento dos ciclos de CPU.
+**Conclusão**:
+- O tempo total de execução aumentou significativamente do primeiro para o segundo e terceiro testes.
+- O aumento foi influenciado principalmente pela redução do tamanho da página, que elevou o número de page faults (falhas de página), aumentando o tempo de execução.
+- Entre o segundo e o terceiro testes, mesmo com uma memória secundária menor no terceiro teste, o tempo de execução não mudou, indicando que a limitação da memória secundária não teve impacto significativo.
 
-Tanto o Simples quanto o Round-Robin apresentaram o mesmo tempo ocioso (4610 ms)
+### Impacto do Tamanho da Página:
+**Primeiro Teste (Página = 12)**:
 
-### 3. Preempções
+- Menor tempo total de execução: 28.790 ms.
+- Menor número de page faults (14–21 por processo).
+- O tamanho maior da página permitiu uma alocação mais eficiente, reduzindo as falhas e interrupções.
+  
+**Segundo e Terceiro Testes (Página = 3)**:
 
-O escalonador de Prioridade teve o maior número de preempções (59).
+- Tempo total de execução maior: 34.631 ms.
+- Maior número de page faults (46–77 por processo).
+- A redução no tamanho da página aumentou drasticamente o número de falhas de página, impactando a eficiência do sistema.
+- Impacto da Memória Secundária:
+- A redução da memória secundária no terceiro teste (de 60.000 para 6.000) não impactou o tempo total de execução, sugerindo que a quantidade de memória secundária ainda era suficiente para o comportamento do sistema neste cenário.
 
-Simples e Round-Robin apresentaram 56 preempções cada.
+### Tempo Ocioso:
+O tempo total ocioso aumentou significativamente nos testes com páginas menores:
 
-### 4. Respostas a Interrupções
+**Primeiro Teste**: 9.697 ms.
 
-O comportamento de resposta a interrupções foi semelhante entre os escalonadores, com pequenas diferenças nos números de IRQ 2 e IRQ 3. O escalonador de Prioridade respondeu menos ao IRQ 3 (468 vezes), sugerindo menor dependência de eventos periódicos.
+**Segundo e Terceiro Testes**: 14.745 ms.
 
-### 5. Tempo de retorno e de resposta
+O aumento do tempo ocioso está associado ao maior tempo gasto em falhas de página e ao tempo bloqueado dos processos.
 
-O escalonador de Prioridade destacou-se ao reduzir o tempo médio de resposta de processos
+### Utilização da CPU:
 
-Para processos com maior prioridade, o tempo de retorno foi menor no escalonador de Prioridade.
+Os processos passaram mais tempo em estado bloqueado no segundo e terceiro testes, como visto nas métricas:
 
-### 5. Tempo nos estados
+Exemplo: Processo 1 teve 33.655 ms bloqueado no segundo e terceiro testes, contra 28.024 ms no primeiro teste.
 
-#### Tempo em execução:
-
-Os tempos são muito próximos entre os escalonadores, mas o escalonador de Prioridade mostra maior consistência em manter processos importantes em execução.
-
-#### Tempo pronto e bloqueado:
-
-O escalonador de Prioridade apresentou menor tempo bloqueado para os processos prioritários, o que reflete a redução do tempo total de execução.
-
-### Conclusão
-
-A análise mostrou que os escalonadores têm comportamentos distintos dependendo da carga e das características dos processos. O escalonador de Prioridade mostrou ser o mais eficiente em cenários com alta concorrência e prioridades definidas, enquanto os outros dois são mais adequados para sistemas mais simples e previsíveis.
+### Conclusões Finais:
+- Tamanho da Página tem um impacto significativo na eficiência do sistema:
+- Páginas maiores (Teste 1) reduziram falhas de página e melhoraram o desempenho geral.
+- Páginas menores (Testes 2 e 3) aumentaram falhas de página, interrupções e tempo bloqueado, prejudicando o desempenho.
+- Tempo Ocioso cresce com a quantidade de falhas de página, o que afeta diretamente o tempo total de execução.
 
